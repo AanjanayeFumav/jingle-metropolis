@@ -1,0 +1,31 @@
+{
+  "name": "fumav",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Fumav — pay-by-bank rail for real-money gaming. Astra (ACH) + Bridge (USDC settlement).",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "smoke:astra": "tsx scripts/smoke-astra.ts",
+    "simulate": "tsx scripts/simulate.ts",
+    "oauth:astra": "tsx scripts/oauth-astra.ts",
+    "link:astra": "tsx scripts/link-astra.ts",
+    "business:astra": "tsx scripts/business-astra.ts",
+    "routine:astra": "tsx scripts/routine-astra.ts",
+    "plaid:astra": "tsx scripts/plaid-link-astra.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
