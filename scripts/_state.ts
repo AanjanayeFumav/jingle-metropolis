@@ -25,9 +25,22 @@ export interface Party {
   account_id?: string;
 }
 
+export interface BridgeState {
+  /** Fumav's own Bridge customer — owns the treasury wallet. */
+  fumav_customer_id?: string;
+  treasury_wallet_id?: string;
+  /** Demo merchant customer + its bank. */
+  merchant_customer_id?: string;
+  merchant_external_account_id?: string;
+  fumav_signed_agreement_id?: string;
+  merchant_signed_agreement_id?: string;
+  last_transfer_id?: string;
+}
+
 export interface FumavState {
   player?: Party;
   business?: Party;
+  bridge?: BridgeState;
   last_intent_id?: string;
   last_routine_id?: string;
   last_transfer_id?: string;
@@ -47,6 +60,7 @@ export function writeState(patch: Partial<FumavState>): FumavState {
   for (const k of ["player", "business"] as const) {
     if (patch[k]) next[k] = { ...(cur[k] ?? {}), ...patch[k] };
   }
+  if (patch.bridge) next.bridge = { ...(cur.bridge ?? {}), ...patch.bridge };
   writeFileSync(STATE_FILE, JSON.stringify(next, null, 2) + "\n", { mode: 0o600 });
   return next;
 }

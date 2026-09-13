@@ -138,11 +138,12 @@ export class PaymentEngine {
     const total = (type: LedgerEntryType) =>
       this.ledger.filter((e) => e.type === type).reduce((s, e) => s + e.amount, 0);
     return {
-      fronted: -total("TREASURY_FRONT"),
+      // `0 - x` (not `-x`) so an empty column is +0, never -0 — dashboards would print "-0".
+      fronted: 0 - total("TREASURY_FRONT"),
       replenished: total("ACH_REPLENISH"),
       feesEarned: total("FEE_ACCRUED"),
-      lossesAbsorbed: -total("LOSS_WRITEOFF"),
-      chargebacksAbsorbed: -total("CHARGEBACK_ABSORBED"),
+      lossesAbsorbed: 0 - total("LOSS_WRITEOFF"),
+      chargebacksAbsorbed: 0 - total("CHARGEBACK_ABSORBED"),
     };
   }
 

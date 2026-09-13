@@ -15,7 +15,13 @@
     "link:astra": "tsx scripts/link-astra.ts",
     "business:astra": "tsx scripts/business-astra.ts",
     "routine:astra": "tsx scripts/routine-astra.ts",
-    "plaid:astra": "tsx scripts/plaid-link-astra.ts"
+    "plaid:astra": "tsx scripts/plaid-link-astra.ts",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "tos:bridge": "tsx scripts/tos-bridge.ts",
+    "customers:bridge": "tsx scripts/customers-bridge.ts",
+    "setup:bridge": "tsx scripts/setup-bridge.ts",
+    "transfer:bridge": "tsx scripts/transfer-bridge.ts",
+    "check:bridge": "tsx scripts/check-bridge.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
