@@ -21,7 +21,12 @@
     "customers:bridge": "tsx scripts/customers-bridge.ts",
     "setup:bridge": "tsx scripts/setup-bridge.ts",
     "transfer:bridge": "tsx scripts/transfer-bridge.ts",
-    "check:bridge": "tsx scripts/check-bridge.ts"
+    "check:bridge": "tsx scripts/check-bridge.ts",
+    "dev": "tsx watch apps/api/src/server.ts",
+    "start": "tsx apps/api/src/server.ts",
+    "pay": "tsx scripts/pay.ts",
+    "check:astra": "tsx scripts/check-astra.ts",
+    "tunnel": "ngrok http 3100 --domain \"$NGROK_DOMAIN\""
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
@@ -29,7 +34,9 @@
     "typescript": "^5.5.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.0"
+    "@types/express": "^5.0.6",
+    "dotenv": "^16.4.0",
+    "express": "^5.2.1"
   },
   "engines": {
     "node": ">=20"

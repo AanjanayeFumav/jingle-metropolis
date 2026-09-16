@@ -275,11 +275,24 @@ export interface AstraRoutine {
   [k: string]: unknown;
 }
 
+/** GET /v1/transfers/{id}. status: pending | processed | cancelled | failed. */
 export interface AstraTransfer {
   id: string;
-  status?: string;
+  status?: "pending" | "processed" | "cancelled" | "failed" | string;
   routine_id?: string;
+  routine_type?: string;
   amount?: number;
+  payment_type?: string;
+  source_id?: string;
+  destination_id?: string;
+  destination_user_id?: string;
+  client_correlation_id?: string;
+  failure_reason?: string | null;
+  /** Present once a Reg E dispute exists; Astra runs the dispute (status e.g. Open / Won / Lost / Not Disputed). */
+  chargeback?: Record<string, unknown> | null;
+  initiated?: string;
+  updated?: string;
+  estimated_clearing_date?: string;
   [k: string]: unknown;
 }
 
@@ -479,6 +492,12 @@ export class AstraClient {
   async listRoutines(bearer: string): Promise<AstraRoutine[]> {
     const raw = await this.request<unknown>("GET", "/v1/routines", { bearer });
     return unwrapList<AstraRoutine>(raw, "routines");
+  }
+
+  /** Transfers spawned by one routine — the right primitive for polling a payment's bank-debit leg. */
+  async listRoutineTransfers(bearer: string, routineId: string): Promise<AstraTransfer[]> {
+    const raw = await this.request<unknown>("GET", `/v1/routines/${encodeURIComponent(routineId)}/transfers`, { bearer });
+    return unwrapList<AstraTransfer>(raw, "transfers");
   }
 
   async listTransfers(bearer: string): Promise<AstraTransfer[]> {

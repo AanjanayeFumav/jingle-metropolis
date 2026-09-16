@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fumav - Merchant settlement</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f7f8f7; color:#1a1c1a; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 22px 18px 48px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .mark { width:30px; height:30px; border-radius:8px; background:#00A844; color:#fff; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; }
+  .brand b { font-size:17px; }
+  .brand .sub { color:#7a807a; font-size:12.5px; margin-left:4px; }
+  .badge { margin-left:auto; font-size:11px; font-weight:800; letter-spacing:.5px; padding:5px 10px; border-radius:20px; border:1.5px solid #bfe7cf; background:#f2fbf5; color:#0a8f47; }
+  .badge.mock { border-color:#e5e8e5; background:#fff; color:#7a807a; }
+  .badge.stale { border-color:#f3d3a0; background:#fff8ec; color:#a4661a; }
+  .updated { font-size:11px; color:#a0a6a0; margin-left:10px; font-variant-numeric: tabular-nums; }
+  .merchant { margin-top:14px; font-size:13px; color:#4a4f4a; }
+  .merchant b { color:#1a1c1a; }
+  .statgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0 12px; }
+  .stat { background:#fff; border:1px solid #e5e8e5; border-radius:12px; padding:12px 12px; }
+  .stat .l { font-size:10px; color:#7a807a; letter-spacing:.4px; text-transform:uppercase; }
+  .stat .v { font-size:20px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .stat .v.green { color:#0a8f47; }
+  .stat .d { font-size:10.5px; color:#a0a6a0; margin-top:2px; }
+  .card { background:#fff; border:1px solid #e5e8e5; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:13.5px; font-weight:700; margin-bottom:2px; }
+  .card .note { font-size:10.5px; color:#a0a6a0; margin-bottom:8px; }
+  .thead, .trow { display:grid; grid-template-columns: 1.3fr 1fr 1.1fr 2.2fr 2.2fr; gap:10px; align-items:center; }
+  .thead { font-size:10px; color:#a0a6a0; letter-spacing:.4px; text-transform:uppercase; padding:6px 2px; border-bottom:1px solid #eef0ee; }
+  .trow { padding:10px 2px; border-bottom:1px solid #f3f5f3; font-size:12px; }
+  .trow:last-child { border-bottom:none; }
+  .trow.flash { animation: rowin 1.2s ease; }
+  @keyframes rowin { from { background:#e6f7ec; } to { background:transparent; } }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:#4a4f4a; }
+  .t1 { font-weight:700; font-variant-numeric:tabular-nums; }
+  .t2 { font-size:10px; color:#a0a6a0; }
+  .net { font-weight:800; color:#0a8f47; font-variant-numeric:tabular-nums; }
+  .amt { font-variant-numeric:tabular-nums; color:#4a4f4a; font-size:11px; }
+  .chip { display:inline-block; font-size:10.5px; font-weight:700; border-radius:7px; padding:3px 8px; white-space:nowrap; }
+  .chip.ok { color:#067a3c; background:#e6f7ec; }
+  .chip.wait { color:#7a4f00; background:#fff3dd; }
+  .chip.bad { color:#8a1c1c; background:#fde8e8; }
+  .chip.neutral { color:#4a4f4a; background:#eef0ee; }
+  .leg .lbl { font-size:10px; color:#7a807a; text-transform:uppercase; letter-spacing:.3px; }
+  .leg .st { font-size:11.5px; font-weight:600; margin-top:1px; }
+  .leg .id { margin-top:2px; }
+  .leg.failed .st { color:#8a1c1c; }
+  .empty { padding:22px; text-align:center; color:#a0a6a0; font-size:12.5px; }
+  .ledger { font-size:11.5px; }
+  .lrow { display:grid; grid-template-columns: 70px 170px 90px 1fr; gap:10px; padding:7px 2px; border-bottom:1px solid #f3f5f3; align-items:center; }
+  .lrow:last-child { border-bottom:none; }
+  .lrow .ty { font-weight:700; font-size:10.5px; letter-spacing:.3px; }
+  .lrow .am { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+  .lrow .am.neg { color:#8a1c1c; }
+  .lrow .am.pos { color:#0a8f47; }
+  .lrow .memo { color:#7a807a; }
+  .lrow .ts { color:#a0a6a0; font-variant-numeric:tabular-nums; font-size:10.5px; }
+  .operator { background:#101a2b; color:#fff; border-radius:14px; padding:14px; margin-bottom:12px; display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .operator .l { font-size:10px; color:#8fa3c2; text-transform:uppercase; letter-spacing:.4px; }
+  .operator .v { font-size:17px; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums; }
+  .operator .hd { grid-column: 1 / -1; font-size:11px; color:#9db4d4; margin-bottom:-2px; }
+  .foot { text-align:center; font-size:10.5px; color:#a0a6a0; margin-top:18px; }
+  .err { color:#8a1c1c; font-size:10.5px; margin-top:2px; }
+  @media (max-width: 760px) { .statgrid { grid-template-columns:repeat(2,1fr); } .thead { display:none; } .trow { grid-template-columns:1fr; gap:6px; } .operator { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="mark">F</div><b>Fumav</b><span class="sub">Merchant settlement</span>
+    <span id="badge" class="badge mock">CONNECTING</span><span id="updated" class="updated"></span>
+  </div>
+  <div class="merchant">Merchant: <b id="merchant">-</b> &middot; Payouts arrive by bank transfer, same day, net of the Fumav fee. Player bank debits clear on their own schedule and never affect a payout already made.</div>
+
+  <div class="statgrid">
+    <div class="stat"><div class="l">Paid out</div><div id="s-paid" class="v green">$0.00</div><div class="d" id="s-paid-d">0 payments</div></div>
+    <div class="stat"><div class="l">In flight</div><div id="s-flight" class="v">$0.00</div><div class="d" id="s-flight-d">0 payments</div></div>
+    <div class="stat"><div class="l">Fumav fees</div><div id="s-fees" class="v">$0.00</div><div class="d">3% or 35&cent; minimum</div></div>
+    <div class="stat"><div class="l">Returned</div><div id="s-ret" class="v">0</div><div class="d">no payout made</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Payments</h3>
+    <div class="note">Newest first. Each payment shows both legs with the live object ids from the payment rails.</div>
+    <div class="thead"><div>Payment</div><div>Amount</div><div>Status</div><div>Player bank debit</div><div>Payout to you</div></div>
+    <div id="rows"><div class="empty">No payments yet. Run <span class="mono">npm run pay</span>.</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Ledger</h3>
+    <div class="note">Every money movement the orchestrator booked, newest first.</div>
+    <div id="ledger" class="ledger"><div class="empty">Empty</div></div>
+  </div>
+
+  <div class="operator">
+    <div class="hd">Operator view (Fumav treasury, not merchant funds)</div>
+    <div><div class="l">Fronted</div><div id="o-fronted" class="v">$0.00</div></div>
+    <div><div class="l">Replenished</div><div id="o-repl" class="v">$0.00</div></div>
+    <div><div class="l">Fees earned</div><div id="o-fees" class="v">$0.00</div></div>
+    <div><div class="l">Losses absorbed</div><div id="o-loss" class="v">$0.00</div></div>
+    <div><div class="l">Disputes covered</div><div id="o-cb" class="v">$0.00</div></div>
+  </div>
+
+  <div class="foot">Sandbox &mdash; simulated funds. Bank debits and payouts are real sandbox objects at the payment rails; no real money moves.</div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const usd = (c) => (c < 0 ? "-" : "") + "$" + (Math.abs(c) / 100).toFixed(2);
+  const short = (id) => id ? (id.length > 18 ? id.slice(0, 8) + "…" + id.slice(-6) : id) : "-";
+  const when = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+  const chipClass = (s) => ({ settled: "ok", replenished: "ok", fronting: "wait", ach_initiated: "wait", created: "wait", holding: "wait", returned: "neutral", loss_absorbed: "ok", charged_back: "ok" })[s] || "neutral";
+  const PAID = new Set(["settled", "replenished", "loss_absorbed", "charged_back"]);
+  const FLIGHT = new Set(["created", "ach_initiated", "fronting", "holding"]);
+  const known = new Set();
+  let firstLoad = true;
+
+  function leg(label, st, id, failed, extra) {
+    return '<div class="leg' + (failed ? " failed" : "") + '"><div class="lbl">' + label + '</div><div class="st">' + st + '</div>' +
+      (id ? '<div class="id mono">' + id + '</div>' : '') + (extra ? '<div class="t2">' + extra + '</div>' : '') + '</div>';
+  }
+
+  function render(data, summary, health) {
+    const list = data.payments;
+    $("badge").textContent = data.mode === "live" ? "LIVE SANDBOX" : "MOCK";
+    $("badge").className = "badge " + (data.mode === "live" ? "" : "mock");
+    $("merchant").textContent = list[0] ? list[0].merchantId : "merch_sarena";
+    $("updated").textContent = "updated " + when(new Date().toISOString());
+
+    const paid = list.filter(p => PAID.has(p.status)), flight = list.filter(p => FLIGHT.has(p.status));
+    $("s-paid").textContent = usd(paid.reduce((s, p) => s + p.net, 0)); $("s-paid-d").textContent = paid.length + " payment" + (paid.length === 1 ? "" : "s");
+    $("s-flight").textContent = usd(flight.reduce((s, p) => s + p.net, 0)); $("s-flight-d").textContent = flight.length + " payment" + (flight.length === 1 ? "" : "s");
+    $("s-fees").textContent = usd(paid.reduce((s, p) => s + p.fee, 0));
+    $("s-ret").textContent = String(list.filter(p => p.status === "returned").length);
+
+    if (!list.length) { $("rows").innerHTML = '<div class="empty">No payments yet. Run <span class="mono">npm run pay</span>.</div>'; }
+    else {
+      $("rows").innerHTML = list.map(p => {
+        const isNew = !firstLoad && !known.has(p.id); known.add(p.id);
+        const bank = p.bankDebit, pay = p.settlement;
+        return '<div class="trow' + (isNew ? " flash" : "") + '">' +
+          '<div><div class="t1 mono">' + p.id + '</div><div class="t2">' + when(p.createdAt) + ' &middot; player ' + p.player + '</div>' + (p.error ? '<div class="err">' + p.error + '</div>' : '') + '</div>' +
+          '<div><div class="net">' + usd(p.net) + '</div><div class="amt">' + usd(p.amount) + ' &minus; fee ' + usd(p.fee) + '</div></div>' +
+          '<div><span class="chip ' + chipClass(p.status) + '">' + p.statusLabel + '</span></div>' +
+          leg("Bank debit", bank.routineLabel, bank.routineId ? "routine " + short(bank.routineId) : "", false, bank.transferId ? "transfer " + short(bank.transferId) + " &middot; " + (bank.transferStatus || "") + (bank.failureReason ? " &middot; " + bank.failureReason : "") : (bank.checkedAt ? "checked " + when(bank.checkedAt) : "")) +
+          leg("Payout", pay.label, pay.transferId ? "transfer " + short(pay.transferId) : "", pay.failed, pay.checkedAt ? "checked " + when(pay.checkedAt) : "") +
+          '</div>';
+      }).join("");
+    }
+    firstLoad = false;
+
+    const o = summary.operator;
+    $("o-fronted").textContent = usd(o.fronted); $("o-repl").textContent = usd(o.replenished); $("o-fees").textContent = usd(o.feesEarned);
+    $("o-loss").textContent = usd(o.lossesAbsorbed); $("o-cb").textContent = usd(o.chargebacksAbsorbed);
+  }
+
+  function renderLedger(entries) {
+    if (!entries.length) { $("ledger").innerHTML = '<div class="empty">Empty</div>'; return; }
+    $("ledger").innerHTML = entries.slice(0, 40).map(e =>
+      '<div class="lrow"><div class="ts">' + when(e.occurredAt) + '</div><div class="ty">' + e.type + '</div>' +
+      '<div class="am ' + (e.amount < 0 ? "neg" : e.amount > 0 ? "pos" : "") + '">' + usd(e.amount) + '</div>' +
+      '<div class="memo"><span class="mono">' + e.paymentIntentId + '</span> &middot; ' + (e.memo || "") + '</div></div>').join("");
+  }
+
+  async function tick() {
+    try {
+      const [data, summary, ledger, health] = await Promise.all([
+        fetch("/api/payments").then(r => r.json()), fetch("/api/summary").then(r => r.json()),
+        fetch("/api/ledger").then(r => r.json()), fetch("/api/health").then(r => r.json())]);
+      render(data, summary, health); renderLedger(ledger.entries);
+    } catch (e) {
+      $("badge").textContent = "OFFLINE"; $("badge").className = "badge stale";
+    }
+  }
+  tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>
