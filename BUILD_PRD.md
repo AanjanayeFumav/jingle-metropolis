@@ -50,6 +50,13 @@ T-1 only, behind the RiskEngine stub · per-merchant wallet + daily-sweep model 
 - Bridge: **no payment webhooks fire in sandbox** (poll transfer states; test the webhook handler with `POST /webhooks/{id}/send`) · **Plaid does not work in Bridge sandbox** · wallets ARE properly testable via `simulate_deposit`
 - Astra OAuth requires SMS to `SMOKE_PHONE` — founder must be present for step S1.3 (paired session)
 
+## Session 4 — Demo-ready v1 (scoped Sep 21, post-market-feedback)
+
+1. **The signup-flow demo, timed** — Archie's explicit ask: watch a new player sign up, see how long it takes, see the friction. Build the onboarding path (bank-link flow, sandbox) with a visible elapsed-time counter; the demo answer to "what does signup look like?" becomes a live stopwatch, not a claim.
+2. UX pass on the merchant view + checkout surfaces (demo-grade polish, not production)
+3. Curated demo script: one command resets to a clean state, so every demo starts identical
+**AC: a stranger can watch signup → payment → settlement live, with real timings, and the founder never says "imagine that this…"**
+
 ## Reference
 
 `../03 Research & Briefs/Integration_Brief_AstraBridge.md` has the full endpoint/auth writeup. API docs: docs.astra.finance · apidocs.bridge.xyz (both have llms.txt indexes).
