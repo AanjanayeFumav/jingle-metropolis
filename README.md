@@ -31,14 +31,14 @@ Settlement is confirmed by reading the transaction receipt (`packages/monad/src/
 
 See `deployments/monad-testnet.json` for the live addresses and deploy transaction hashes. The operator console links every settlement and dispute transaction to the explorer.
 
-<!-- filled in from the live run; see "Live run" below -->
 | | |
 |---|---|
 | Chain | Monad testnet (`10143`) |
-| JingleSettlement | see deployments file |
-| TestUSD (6-decimal test dollar, stands in for USDC) | see deployments file |
-| Treasury / operator | see deployments file |
-| Demo merchant wallet | see deployments file |
+| JingleSettlement | [`0xa655ef5323a95cceaf81907dd945720cab2de999`](https://testnet.monadexplorer.com/address/0xa655ef5323a95cceaf81907dd945720cab2de999) |
+| TestUSD (6-decimal test dollar, stands in for USDC) | [`0xf03dcc288d3d9e87b836dc57bc3688a18de86b3e`](https://testnet.monadexplorer.com/address/0xf03dcc288d3d9e87b836dc57bc3688a18de86b3e) |
+| Treasury / operator | [`0x9c83aA4A8aE8bcBCD0925B298513EB8D386D86FA`](https://testnet.monadexplorer.com/address/0x9c83aA4A8aE8bcBCD0925B298513EB8D386D86FA) |
+| Demo merchant wallet | [`0xc71dAFF64eCc6FAc9DE76C681092634592456459`](https://testnet.monadexplorer.com/address/0xc71dAFF64eCc6FAc9DE76C681092634592456459) |
+| Deploy transactions | [deployTestUsd](https://testnet.monadexplorer.com/tx/0x8340d6013167de40d5799580e300df8d83b405d5a2b8e87d3d89ae3d691f487d), [deploySettlement](https://testnet.monadexplorer.com/tx/0x8ec61abfd88b47d63ac676964649ee7dab7847c0bac7b95e13fd208cadb00b5c), [mint](https://testnet.monadexplorer.com/tx/0x2d787dc35ed6a00697f6ba9f90dee483a26712dad05155a9dcd106fedb17637e), [approve](https://testnet.monadexplorer.com/tx/0x11fa64d23eae6a47915ef327dcc6d3f911d1ebbba6c27270bf209c67df54a1b3), [fundReserve](https://testnet.monadexplorer.com/tx/0xc6b3eb18ef0fdd37b5144c0f2efd7c6d54b478dbc40c8e5a97d022cf4a11dd9a) |
 
 ## Architecture
 
@@ -86,8 +86,15 @@ Demo script: open `/checkout`, link a bank (sandbox picker), tap **Pay $19.99**.
 
 ## Live run
 
-<!-- filled in after the recorded run -->
-Transaction hashes from the recorded demo are listed in `deployments/monad-testnet.json` (deploy) and in the demo video (settle + dispute).
+Recorded on October 13, 2026 from `/checkout` and `/ops` against the contracts above (block timestamps are on the explorer):
+
+| Payment | Outcome | `settle()` tx | Block | `absorbDispute()` tx |
+|---|---|---|---|---|
+| `pay_mv7dh79b0` | replenished | [`0xc4951be8…f982b6`](https://testnet.monadexplorer.com/tx/0xc4951be8ef339edf6eef85a20f546c81db21b855789c9a0c1e7658d4e8f982b6) | 70823801 | - |
+| `pay_mv7dhayt4` | charged back | [`0x5a22da8d…9472c2`](https://testnet.monadexplorer.com/tx/0x5a22da8dcb0067c205bb78be3e7d3b90c98908761f8d1d9ae5659962419472c2) | 70823815 | [`0x877ef62b…f0e7d0`](https://testnet.monadexplorer.com/tx/0x877ef62bf987afe87e9f5acf6215f813b8278ff6b4c0c8a3ea8d20bf03f0e7d0) |
+| `pay_mv7dhefw8` | replenished | [`0x6c52d1a6…f43ae1`](https://testnet.monadexplorer.com/tx/0x6c52d1a6ce92676fdd1947dd1a67eda8e90aedc72ca93abadb26f6f60af43ae1) | 70823830 | - |
+
+Each settlement reached `payment_processed` from the Monad receipt within 1 to 3 seconds of the tap; the engine then booked `MERCHANT_PAYOUT` and `FEE_ACCRUED`. The disputed payment shows `CHARGEBACK_ABSORBED` in the ledger while the merchant's on-chain balance is unchanged; the reserve dropped by $19.99.
 
 ## Pre-existing code and build window
 
