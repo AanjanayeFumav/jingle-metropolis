@@ -308,6 +308,7 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
           testUsd: d.testUsd,
           treasury: d.treasury,
           merchant: rt.resolveMerchant(rt.merchantId),
+          signer: rt.chain.signer,
           deployTxs: d.txs,
           links: { settlement: rt.chain.addressUrl(d.settlement), treasury: rt.chain.addressUrl(d.treasury), merchant: rt.chain.addressUrl(rt.resolveMerchant(rt.merchantId)) },
           balances,

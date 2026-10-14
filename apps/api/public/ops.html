@@ -108,6 +108,7 @@
       ["JingleSettlement", '<a target="_blank" href="' + c.links.settlement + '">' + c.settlement + '</a>'],
       ["TestUSD (6 dec)", c.testUsd],
       ["Treasury / operator", '<a target="_blank" href="' + c.links.treasury + '">' + c.treasury + '</a>'],
+      ["Treasury signer", c.signer && c.signer.kind === "privy" ? "Privy wallet " + c.signer.walletId + " · policy " + (c.signer.policyId || "none") : "raw key (.env)"],
       ["Merchant wallet", '<a target="_blank" href="' + c.links.merchant + '">' + c.merchant + '</a>'],
       ["Merchant payout wallet", o.payoutAccount ? (o.payoutAccount.provider === "privy" ? "Privy-managed" : "Privy (mock)") + " · id " + o.payoutAccount.privyWalletId + " · " + String(o.payoutAccount.email).replace(/[<>&"]/g, "") + " · balance " + usd(b0.merchantUsd) + (o.payoutAccount.link ? ' · <a target="_blank" href="' + o.payoutAccount.link + '">' + short(o.payoutAccount.address) + '</a>' : "") : 'not set up · deployment default above · <a href="/merchant/setup">set up payouts</a>'],
       ["Deploy txs", Object.entries(c.deployTxs || {}).map(([k, h]) => k + ' <a target="_blank" href="' + c.explorerUrl + '/tx/' + h + '">' + short(h) + '</a>').join(" · ")],

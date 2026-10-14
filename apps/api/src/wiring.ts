@@ -46,6 +46,8 @@ export interface Runtime {
   /** MONAD mode only: addresses + explorer links for the operator console. */
   chain?: {
     deployment: Deployment;
+    /** Who signs settle()/absorbDispute(): the raw key from .env, or a Privy server wallet (TREASURY_SIGNER=privy). */
+    signer: { kind: "raw" | "privy"; walletId?: string; policyId?: string | null };
     txUrl(hash: string): string;
     addressUrl(address: string): string;
     /** Live balances for /api/ops. */
@@ -102,7 +104,8 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
     const settlementAbi = loadArtifact("JingleSettlement").abi;
     const usdAbi = loadArtifact("TestUSD").abi;
     if (walletClient.account.address.toLowerCase() !== deployment.treasury.toLowerCase()) {
-      throw new Error(`MONAD_PRIVATE_KEY is ${walletClient.account.address} but deployments/monad-testnet.json was deployed by ${deployment.treasury}; redeploy or fix the key`);
+      const signer = env.TREASURY_SIGNER === "privy" ? "the Privy treasury wallet (PRIVY_TREASURY_ADDRESS)" : "MONAD_PRIVATE_KEY";
+      throw new Error(`${signer} is ${walletClient.account.address} but deployments/monad-testnet.json says the treasury is ${deployment.treasury}; check TREASURY_SIGNER and the Privy ids`);
     }
     const settlement = new MonadSettlementRail({
       publicClient,
@@ -129,6 +132,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
       resolveMerchant,
       chain: {
         deployment,
+        signer: env.TREASURY_SIGNER === "privy" ? { kind: "privy", walletId: env.PRIVY_TREASURY_WALLET_ID, policyId: deployment.privyPolicyId ?? null } : { kind: "raw" },
         txUrl: (hash) => explorerTxUrl(env, hash),
         addressUrl: (address) => explorerAddressUrl(env, address),
         async balances() {

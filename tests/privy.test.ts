@@ -81,3 +81,45 @@ test("merchant setup page carries no crypto vocabulary", () => {
   assert.equal(html.match(/\b(usdc|usdb|usdt|stablecoins?|wallets?|on-chain|onchain|blockchain|crypto|solana|monad|tokens?|chain)\b/i), null);
   assert.match(html, /simulated funds/);
 });
+
+test("Privy viem account: eth_signTransaction request shape, and the returned raw tx is what gets broadcast", async () => {
+  const { privateKeyToAccount } = await import("viem/accounts");
+  const { parseTransaction, recoverTransactionAddress } = await import("viem");
+  const { privyAccount, toPrivyTransaction } = await import("../packages/privy/src/viem-account.js");
+  // Stand-in for Privy: signs the params it receives with a local key, so the round trip checks our field mapping.
+  const key = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+  let body: any;
+  const fake = {
+    async rpc<T>(walletId: string, b: { method: string; params: any }): Promise<T> {
+      assert.equal(walletId, "wal_1");
+      body = b;
+      const t = b.params.transaction;
+      const signed = await key.signTransaction({
+        type: "eip1559", chainId: t.chain_id, nonce: t.nonce, to: t.to, data: t.data, value: BigInt(t.value),
+        gas: BigInt(t.gas_limit), maxFeePerGas: BigInt(t.max_fee_per_gas), maxPriorityFeePerGas: BigInt(t.max_priority_fee_per_gas),
+      });
+      return { method: "eth_signTransaction", data: { signed_transaction: signed, encoding: "rlp" } } as T;
+    },
+  };
+  const acct = privyAccount(fake, "wal_1", key.address);
+  const tx = { chainId: 10143, nonce: 7, to: "0xa655ef5323a95cceaf81907dd945720cab2de999" as const, data: "0x1234" as const, value: 0n, gas: 90_000n, maxFeePerGas: 60_000_000_000n, maxPriorityFeePerGas: 2_000_000_000n };
+  const raw = await acct.signTransaction(tx);
+  assert.equal(body.method, "eth_signTransaction");
+  assert.deepEqual(body.params.transaction, toPrivyTransaction(tx, key.address));
+  assert.equal(body.params.transaction.type, 2);
+  assert.equal(body.params.transaction.chain_id, 10143);
+  assert.equal(body.params.transaction.gas_limit, "0x15f90");
+  const parsed = parseTransaction(raw);
+  assert.equal(parsed.chainId, 10143);
+  assert.equal(parsed.nonce, 7);
+  assert.equal(await recoverTransactionAddress({ serializedTransaction: raw as any }), key.address);
+});
+
+test("walletClientFor: raw key by default, Privy only when TREASURY_SIGNER=privy and its ids are set", async () => {
+  const { walletClientFor } = await import("../packages/monad/src/clients.js");
+  const pk = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+  assert.equal(walletClientFor({ MONAD_PRIVATE_KEY: pk }).account.type, "local");
+  assert.throws(() => walletClientFor({ MONAD_PRIVATE_KEY: pk, TREASURY_SIGNER: "privy" }), /PRIVY_TREASURY_WALLET_ID/);
+  const c = walletClientFor({ TREASURY_SIGNER: "privy", PRIVY_APP_ID: "a", PRIVY_APP_SECRET: "s", PRIVY_TREASURY_WALLET_ID: "w", PRIVY_TREASURY_ADDRESS: "0xc71dAFF64eCc6FAc9DE76C681092634592456459" });
+  assert.equal(c.account.address, "0xc71dAFF64eCc6FAc9DE76C681092634592456459");
+});

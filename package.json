@@ -2,7 +2,7 @@
   "name": "jingle",
   "private": true,
   "version": "0.2.0",
-  "description": "Jingle — pay-by-bank for game studios, settled on Monad. Player pays from a bank account in one tap; the studio is paid now, in dollars, and never eats a chargeback.",
+  "description": "Jingle \u2014 pay-by-bank for game studios, settled on Monad. Player pays from a bank account in one tap; the studio is paid now, in dollars, and never eats a chargeback.",
   "license": "MIT",
   "workspaces": [
     "packages/*",
@@ -17,6 +17,7 @@
     "compile:contracts": "tsx scripts/compile-contracts.ts",
     "deploy:monad": "tsx scripts/deploy-monad.ts",
     "monad:check": "tsx scripts/monad-check.ts",
+    "privy:treasury": "tsx scripts/privy-treasury.ts",
     "pay": "tsx scripts/pay.ts",
     "reset": "tsx scripts/reset.ts",
     "simulate": "tsx scripts/simulate.ts",

@@ -4,8 +4,10 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createPublicClient, createWalletClient, http, type Abi, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
+import { createPublicClient, createWalletClient, http, type Abi, type Address, type Hex, type LocalAccount, type PublicClient, type WalletClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { RestPrivyClient } from "../../privy/src/client.js";
+import { privyAccount } from "../../privy/src/viem-account.js";
 import { monadChain, type MonadEnv } from "./chain.js";
 
 export interface Artifact {
@@ -28,6 +30,11 @@ export interface Deployment {
   testUsd: Address;
   settlement: Address;
   txs: Record<string, Hex>;
+  /** Set by scripts/privy-treasury.ts when the operator moved to a Privy server wallet. */
+  treasurySigner?: "raw" | "privy";
+  privyTreasuryWalletId?: string;
+  privyPolicyId?: string | null;
+  previousTreasury?: Address;
 }
 
 export function deploymentPath(root = process.cwd()): string {
@@ -43,7 +50,27 @@ export function publicClientFor(env: MonadEnv = process.env): PublicClient {
   return createPublicClient({ chain, transport: http(chain.rpcUrls.default.http[0]) });
 }
 
-export function walletClientFor(env: NodeJS.ProcessEnv = process.env): WalletClient & { account: ReturnType<typeof privateKeyToAccount> } {
+export type SigningWalletClient = WalletClient & { account: LocalAccount };
+
+/** The treasury signer: a Privy server wallet when TREASURY_SIGNER=privy, else the raw key (default). */
+export function walletClientFor(env: NodeJS.ProcessEnv = process.env): SigningWalletClient {
+  if (env.TREASURY_SIGNER === "privy") return privyWalletClientFor(env);
+  return rawKeyWalletClientFor(env);
+}
+
+export function privyWalletClientFor(env: NodeJS.ProcessEnv = process.env, ids?: { walletId: string; address: Address }): SigningWalletClient {
+  const walletId = ids?.walletId ?? env.PRIVY_TREASURY_WALLET_ID;
+  const address = ids?.address ?? (env.PRIVY_TREASURY_ADDRESS as Address | undefined);
+  if (!walletId || !address || !env.PRIVY_APP_ID || !env.PRIVY_APP_SECRET) {
+    throw new Error("TREASURY_SIGNER=privy needs PRIVY_APP_ID, PRIVY_APP_SECRET, PRIVY_TREASURY_WALLET_ID, PRIVY_TREASURY_ADDRESS in .env");
+  }
+  const chain = monadChain(env);
+  const account = privyAccount(new RestPrivyClient({ appId: env.PRIVY_APP_ID, appSecret: env.PRIVY_APP_SECRET }), walletId, address);
+  const client = createWalletClient({ account, chain, transport: http(chain.rpcUrls.default.http[0]) });
+  return Object.assign(client, { account });
+}
+
+export function rawKeyWalletClientFor(env: NodeJS.ProcessEnv = process.env): SigningWalletClient {
   const pk = env.MONAD_PRIVATE_KEY;
   if (!pk || !/^0x[0-9a-fA-F]{64}$/.test(pk)) throw new Error("MONAD_PRIVATE_KEY missing or malformed in .env (0x + 64 hex)");
   const chain = monadChain(env);
