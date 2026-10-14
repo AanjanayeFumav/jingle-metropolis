@@ -1,42 +1,50 @@
 {
-  "name": "fumav",
+  "name": "jingle",
   "private": true,
-  "version": "0.1.0",
-  "description": "Fumav — pay-by-bank rail for real-money gaming. Astra (ACH) + Bridge (USDC settlement).",
+  "version": "0.2.0",
+  "description": "Jingle — pay-by-bank for game studios, settled on Monad. Player pays from a bank account in one tap; the studio is paid now, in dollars, and never eats a chargeback.",
+  "license": "MIT",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
+    "dev": "MOCK=true tsx watch apps/api/src/server.ts",
+    "dev:monad": "MONAD=true tsx watch apps/api/src/server.ts",
+    "start": "tsx apps/api/src/server.ts",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc -p .",
-    "smoke:astra": "tsx scripts/smoke-astra.ts",
+    "compile:contracts": "tsx scripts/compile-contracts.ts",
+    "deploy:monad": "tsx scripts/deploy-monad.ts",
+    "monad:check": "tsx scripts/monad-check.ts",
+    "pay": "tsx scripts/pay.ts",
+    "reset": "tsx scripts/reset.ts",
     "simulate": "tsx scripts/simulate.ts",
+    "smoke:astra": "tsx scripts/smoke-astra.ts",
     "oauth:astra": "tsx scripts/oauth-astra.ts",
     "link:astra": "tsx scripts/link-astra.ts",
     "business:astra": "tsx scripts/business-astra.ts",
     "routine:astra": "tsx scripts/routine-astra.ts",
     "plaid:astra": "tsx scripts/plaid-link-astra.ts",
-    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "check:astra": "tsx scripts/check-astra.ts",
     "tos:bridge": "tsx scripts/tos-bridge.ts",
     "customers:bridge": "tsx scripts/customers-bridge.ts",
     "setup:bridge": "tsx scripts/setup-bridge.ts",
     "transfer:bridge": "tsx scripts/transfer-bridge.ts",
     "check:bridge": "tsx scripts/check-bridge.ts",
-    "dev": "tsx watch apps/api/src/server.ts",
-    "start": "tsx apps/api/src/server.ts",
-    "pay": "tsx scripts/pay.ts",
-    "check:astra": "tsx scripts/check-astra.ts",
     "tunnel": "ngrok http 3100 --domain \"$NGROK_DOMAIN\""
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
+    "solc": "0.8.28",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0"
   },
   "dependencies": {
     "@types/express": "^5.0.6",
     "dotenv": "^16.4.0",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "viem": "^2.21.0"
   },
   "engines": {
     "node": ">=20"

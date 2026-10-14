@@ -69,7 +69,7 @@ test("C: chargeback after replenishment is absorbed for the gross amount", async
 });
 
 test("the settlement rail receives the intent id and the NET amount", async () => {
-  const seen: { paymentIntentId: string; merchantId: string; amount: number }[] = [];
+  const seen: { paymentIntentId: string; merchantId: string; amount: number; fee?: number }[] = [];
   const spy: SettlementRail = {
     name: "spy",
     async settleToMerchant(p) {
@@ -80,7 +80,7 @@ test("the settlement rail receives the intent id and the NET amount", async () =
   const e = new PaymentEngine(new MockConsumerRail(), spy, new AlwaysT1Risk());
   const p = e.createPayment({ merchantId: "merch_x", playerId: "p", amount: 1999 });
   await e.start(p.id);
-  assert.deepEqual(seen, [{ paymentIntentId: p.id, merchantId: "merch_x", amount: 1939 }]);
+  assert.deepEqual(seen, [{ paymentIntentId: p.id, merchantId: "merch_x", amount: 1939, fee: 60 }]);
   assert.equal(p.bridgeTransferId, "t_1");
 });
 

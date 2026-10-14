@@ -6,3 +6,5 @@ dist/
 .DS_Store
 .fumav-state.json
 .fumav-payments.json
+.jingle-payments.json
+.jingle-state.json

@@ -1,0 +1,8 @@
+{
+  "name": "@jingle/monad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "Monad settlement rail: JingleSettlement contract client, receipt reader, chain config."
+}

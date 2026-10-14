@@ -1,6 +1,7 @@
 /**
- * Merchant-facing DTOs. Everything the view sees passes through here, so rail internals and the
+ * Merchant-facing DTOs. Everything the merchant view sees passes through here, so rail internals and the
  * settlement asset never leak (tests/view-copy.test.ts enforces the banned-word list on this file too).
+ * The operator console (/ops) reads /api/ops instead and is allowed to say everything.
  */
 import type { PaymentIntent, PaymentIntentStatus } from "../../../packages/core/src/index.js";
 import type { RailFacts } from "./reconcile.js";
@@ -13,16 +14,16 @@ export const STATUS_LABEL: Record<PaymentIntentStatus, string> = {
   settled: "Paid out",
   replenished: "Paid out - bank cleared",
   returned: "Returned - no payout",
-  loss_absorbed: "Paid out - covered by Fumav",
-  charged_back: "Paid out - dispute covered by Fumav",
+  loss_absorbed: "Paid out - covered by Jingle",
+  charged_back: "Paid out - dispute covered by Jingle",
 };
 
-/** Bridge transfer states in merchant words. */
+/** Settlement states in merchant words (Bridge transfer states, and the Monad receipt states mapped onto them). */
 const SETTLEMENT_LABEL: Record<string, string> = {
   in_review: "Submitted",
   awaiting_funds: "Submitted",
   funds_received: "Funds reserved",
-  payment_submitted: "Sent to your bank",
+  payment_submitted: "Sent to your account",
   payment_processed: "Delivered",
   returned: "Returned",
   undeliverable: "Undeliverable",
@@ -71,13 +72,25 @@ export interface PaymentView {
     label: string;
     failed: boolean;
     checkedAt?: string;
+    confirmedAt?: string;
+    /** Public settlement record (explorer link in MONAD mode). */
+    recordUrl?: string;
+  };
+  dispute?: {
+    ref?: string;
+    confirmedAt?: string;
+    recordUrl?: string;
   };
   error?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export function toView(intent: PaymentIntent, facts: RailFacts | undefined): PaymentView {
+export interface ViewLinks {
+  recordUrl?(ref: string): string;
+}
+
+export function toView(intent: PaymentIntent, facts: RailFacts | undefined, links: ViewLinks = {}): PaymentView {
   const f = facts ?? {};
   const debitKey = f.astraStatus ?? f.routineStatus;
   return {
@@ -107,7 +120,12 @@ export function toView(intent: PaymentIntent, facts: RailFacts | undefined): Pay
       label: intent.bridgeTransferId ? ((f.bridgeState && SETTLEMENT_LABEL[f.bridgeState]) ?? "Submitted") : "Not started",
       failed: Boolean(f.settlementFailed),
       checkedAt: f.bridgeCheckedAt,
+      confirmedAt: f.settlementConfirmedAt,
+      recordUrl: intent.bridgeTransferId && links.recordUrl ? links.recordUrl(intent.bridgeTransferId) : undefined,
     },
+    dispute: f.disputeRef
+      ? { ref: f.disputeRef, confirmedAt: f.disputeConfirmedAt, recordUrl: links.recordUrl ? links.recordUrl(f.disputeRef) : undefined }
+      : undefined,
     error: f.lastError,
     createdAt: intent.createdAt,
     updatedAt: intent.updatedAt,

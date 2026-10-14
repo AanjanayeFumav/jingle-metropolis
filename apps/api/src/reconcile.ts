@@ -1,13 +1,13 @@
 /**
  * Reconciler — turns rail FACTS into engine transitions, in legal order, idempotently.
  *
- * Why facts, not events: Astra says webhooks may be duplicated or out of order, Bridge is polled, and
- * `fronting → replenished` is illegal (the merchant must be paid before the player's ACH clearing is booked).
- * So every source (webhook, poller, boot) just RECORDS what it saw, then calls reconcile(), which applies
- * whatever is now legal. Re-running it is always safe.
+ * Why facts, not events: Astra says webhooks may be duplicated or out of order, Bridge is polled, Monad receipts
+ * are polled, and `fronting → replenished` is illegal (the merchant must be paid before the player's ACH clearing
+ * is booked). So every source (webhook, poller, boot, demo trigger) just RECORDS what it saw, then calls
+ * reconcile(), which applies whatever is now legal. Re-running it is always safe.
  *
- * TRANSITIONS (core) is untouched. Bridge failure states while fronting have no legal transition and are
- * only flagged (`settlementFailed`) — how to account for a failed settlement is a product decision, not S3.
+ * TRANSITIONS (core) is untouched. Settlement failure states while fronting have no legal transition and are
+ * only flagged (`settlementFailed`) — how to account for a failed settlement is a product decision.
  */
 import { type PaymentIntent, canTransition } from "../../../packages/core/src/index.js";
 import type { PaymentEngine } from "../../../packages/orchestrator/src/engine.js";
@@ -15,11 +15,17 @@ import type { AstraRoutine, AstraTransfer } from "../../../packages/astra/src/cl
 import type { BridgeTransfer } from "../../../packages/bridge/src/client.js";
 
 export interface RailFacts {
-  // settlement leg (Bridge)
+  // settlement leg (Bridge transfer or Monad tx)
   bridgeState?: string;
   settlementFailed?: boolean;
   bridgeCheckedAt?: string;
-  // bank-debit leg (Astra)
+  /** Monad: block timestamp of the settle() receipt. */
+  settlementConfirmedAt?: string;
+  settlementBlock?: string;
+  // dispute leg (Monad absorbDispute tx, or an Astra chargeback object)
+  disputeRef?: string;
+  disputeConfirmedAt?: string;
+  // bank-debit leg (Astra or mock)
   routineStatus?: string;
   astraTransferId?: string;
   astraStatus?: string;
@@ -59,11 +65,13 @@ export class Reconciler {
     return f;
   }
 
-  recordBridgeTransfer(intentId: string, t: BridgeTransfer): void {
+  recordBridgeTransfer(intentId: string, t: BridgeTransfer & { confirmedAt?: string; blockNumber?: string }): void {
     const f = this.factsFor(intentId);
     f.bridgeState = String(t.state);
     f.settlementFailed = BRIDGE_FAILURE.has(String(t.state));
     f.bridgeCheckedAt = new Date().toISOString();
+    if (t.confirmedAt) f.settlementConfirmedAt = t.confirmedAt;
+    if (t.blockNumber) f.settlementBlock = t.blockNumber;
   }
 
   recordAstraTransfer(intentId: string, t: AstraTransfer): void {
@@ -81,6 +89,14 @@ export class Reconciler {
     f.astraCheckedAt = new Date().toISOString();
   }
 
+  /** A dispute landed (Reg E, or a demo trigger). `ref` is the on-chain absorbDispute tx when the rail has one. */
+  recordDispute(intentId: string, p: { status: string; ref?: string; confirmedAt?: string }): void {
+    const f = this.factsFor(intentId);
+    f.chargeback = { status: p.status, ref: p.ref ?? null };
+    if (p.ref) f.disputeRef = p.ref;
+    if (p.confirmedAt) f.disputeConfirmedAt = p.confirmedAt;
+  }
+
   recordError(intentId: string, err: unknown): void {
     this.factsFor(intentId).lastError = err instanceof Error ? err.message : String(err);
   }
@@ -93,7 +109,7 @@ export class Reconciler {
     if (!f) return [];
     const applied: PaymentIntent["status"][] = [];
 
-    // 1. Merchant paid (Bridge processed) — must come before any ACH-cleared booking.
+    // 1. Merchant paid (settlement processed) — must come before any ACH-cleared booking.
     if (f.bridgeState === "payment_processed" && intent.status === "fronting" && canTransition(intent.status, "settled")) {
       this.engine.onSettlementConfirmed(intentId);
       applied.push(intent.status);

@@ -1,13 +1,13 @@
 /**
- * The Express app: Astra webhook receiver, payment API, merchant view. Built as a function so tests can
- * run it on port 0 with a mock runtime. server.ts is the one-command entrypoint.
+ * The Express app: Astra webhook receiver, payment API, dispute trigger, operator data, static views. Built as a
+ * function so tests can run it on port 0 with a mock runtime. server.ts is the one-command entrypoint.
  */
 import express, { type Request, type Response } from "express";
 import { fileURLToPath } from "node:url";
 import type { AstraTransfer } from "../../../packages/astra/src/client.js";
 import { verifyAstraSignature } from "./astra-verify.js";
 import { saveSnapshot } from "./store.js";
-import { toView } from "./view.js";
+import { toView, type ViewLinks } from "./view.js";
 import type { Runtime } from "./wiring.js";
 
 export interface AppOptions {
@@ -39,6 +39,8 @@ export interface AstraWebhook {
   [k: string]: unknown;
 }
 
+const DISPUTABLE = new Set(["settled", "replenished"]);
+
 async function readRawBody(req: Request): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
@@ -47,6 +49,13 @@ async function readRawBody(req: Request): Promise<Buffer> {
 
 export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express; ctx: AppContext } {
   const { engine, reconciler, readers } = rt;
+  const links: ViewLinks = rt.chain ? { recordUrl: (ref) => rt.chain!.txUrl(ref) } : {};
+  const view = (intentId: string) => {
+    const intent = engine.intents.get(intentId);
+    if (!intent) throw new Error(`unknown intent ${intentId}`);
+    return toView(intent, reconciler.facts.get(intent.id), links);
+  };
+
   const ctx: AppContext = {
     seenWebhookIds: new Set(),
     webhooksHandled: 0,
@@ -138,7 +147,7 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
   app.use(express.json());
 
   app.post("/api/payments", async (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { amount?: unknown; merchantId?: unknown; playerId?: unknown };
+    const body = (req.body ?? {}) as { amount?: unknown; merchantId?: unknown; playerId?: unknown; item?: unknown };
     const amount = Number(body.amount);
     if (!Number.isInteger(amount) || amount <= 0) {
       res.status(400).json({ error: "amount must be a positive integer number of cents" });
@@ -155,20 +164,63 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
       // it is with the error attached; retrying start() would debit the player a second time.
       await engine.start(intent.id);
       ctx.save();
-      res.status(201).json(toView(intent, reconciler.facts.get(intent.id)));
+      res.status(201).json(view(intent.id));
     } catch (err) {
       reconciler.recordError(intent.id, err);
       ctx.save();
       console.error(`[payments] ${intent.id} start failed at ${intent.status}:`, err instanceof Error ? err.message : err);
-      res.status(502).json({ error: err instanceof Error ? err.message : String(err), payment: toView(intent, reconciler.facts.get(intent.id)) });
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err), payment: view(intent.id) });
+    }
+  });
+
+  /**
+   * Demo trigger for a post-settlement Reg E dispute (in production this arrives as an Astra chargeback webhook).
+   * The settlement rail absorbs it on-chain when it can (reserve refills the treasury), then the engine books
+   * CHARGEBACK_ABSORBED. The merchant's payout is never touched.
+   */
+  app.post("/api/payments/:id/dispute", async (req: Request, res: Response) => {
+    const intent = engine.intents.get(String(req.params.id));
+    if (!intent) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (!DISPUTABLE.has(intent.status)) {
+      res.status(409).json({ error: `payment is ${intent.status}; only a paid-out payment can be disputed`, payment: view(intent.id) });
+      return;
+    }
+    try {
+      let ref: string | undefined;
+      let confirmedAt: string | undefined;
+      const rail = engine.settlementRail;
+      if (rail.absorbDispute) {
+        const r = await rail.absorbDispute({ paymentIntentId: intent.id, merchantId: intent.merchantId, amount: intent.amount });
+        ref = r.externalId;
+        // Wait for the receipt so the console shows a confirmed record, not a pending hash.
+        const receipt = await readers.bridgeTransfer(ref);
+        if (receipt.state === "error") throw new Error(`dispute transaction reverted: ${ref}`);
+        confirmedAt = (receipt as { confirmedAt?: string }).confirmedAt;
+      } else {
+        ref = `mock_dispute_${intent.id}`;
+        confirmedAt = new Date().toISOString();
+      }
+      reconciler.recordDispute(intent.id, { status: "lost", ref, confirmedAt });
+      const applied = reconciler.reconcile(intent.id);
+      ctx.save();
+      console.log(`[dispute] ${intent.id} ref=${ref} applied=${applied.join(",") || "none"}`);
+      res.status(200).json(view(intent.id));
+    } catch (err) {
+      reconciler.recordError(intent.id, err);
+      ctx.save();
+      console.error(`[dispute] ${intent.id} failed:`, err instanceof Error ? err.message : err);
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err), payment: view(intent.id) });
     }
   });
 
   app.get("/api/payments", (_req, res) => {
     const list = [...engine.intents.values()]
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-      .map((i) => toView(i, reconciler.facts.get(i.id)));
-    res.json({ mode: rt.mode, payments: list });
+      .map((i) => view(i.id));
+    res.json({ mode: rt.mode, merchantId: rt.merchantId, merchantName: rt.merchantName, payments: list });
   });
 
   app.get("/api/payments/:id", (req, res) => {
@@ -177,7 +229,7 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
       res.status(404).json({ error: "not found" });
       return;
     }
-    res.json(toView(intent, reconciler.facts.get(intent.id)));
+    res.json(view(intent.id));
   });
 
   app.get("/api/ledger", (_req, res) => {
@@ -195,6 +247,35 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
         returned: intents.filter((i) => i.status === "returned").length,
       },
     });
+  });
+
+  /** Operator console data: contracts, addresses, live balances. Chain vocabulary is allowed here. */
+  app.get("/api/ops", async (_req, res) => {
+    const base = { mode: rt.mode, merchantId: rt.merchantId, merchantName: rt.merchantName, operator: engine.summary() };
+    if (!rt.chain) {
+      res.json({ ...base, chain: null });
+      return;
+    }
+    const d = rt.chain.deployment;
+    try {
+      const balances = await rt.chain.balances();
+      res.json({
+        ...base,
+        chain: {
+          chainId: d.chainId,
+          explorerUrl: d.explorerUrl,
+          settlement: d.settlement,
+          testUsd: d.testUsd,
+          treasury: d.treasury,
+          merchant: d.merchant,
+          deployTxs: d.txs,
+          links: { settlement: rt.chain.addressUrl(d.settlement), treasury: rt.chain.addressUrl(d.treasury), merchant: rt.chain.addressUrl(d.merchant) },
+          balances,
+        },
+      });
+    } catch (err) {
+      res.status(502).json({ ...base, chain: { chainId: d.chainId, settlement: d.settlement, error: err instanceof Error ? err.message : String(err) } });
+    }
   });
 
   app.get("/api/health", (_req, res) => {

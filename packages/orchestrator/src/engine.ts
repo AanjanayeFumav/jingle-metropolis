@@ -1,7 +1,7 @@
 /**
  * PaymentEngine — drives a PaymentIntent through the state machine,
  * books ledger entries on every money-moving transition.
- * In-memory stores for v0.1; Postgres later. Rails injected (mock or real).
+ * In-memory stores for v0.1; Postgres later. Rails injected (mock, Bridge, Monad).
  */
 import {
   type Cents,
@@ -40,6 +40,11 @@ export class PaymentEngine {
     private readonly risk: RiskEngine,
     private readonly pricing: PricingConfig = PRICING,
   ) {}
+
+  /** The settlement rail in use (the API's dispute trigger needs its optional absorbDispute). */
+  get settlementRail(): SettlementRail {
+    return this.settlement;
+  }
 
   /** Checkout tap. */
   createPayment(p: { merchantId: string; playerId: string; amount: Cents }): PaymentIntent {
@@ -83,6 +88,7 @@ export class PaymentEngine {
         paymentIntentId: intent.id,
         merchantId: intent.merchantId,
         amount: net,
+        fee: intent.feeAmount,
       });
       intent.bridgeTransferId = settle.externalId;
       this.transition(intent, "fronting");
@@ -99,7 +105,7 @@ export class PaymentEngine {
     this.transition(intent, "settled");
     const net = intent.amount - intent.feeAmount;
     this.book(intent, "MERCHANT_PAYOUT", net, `merchant credited (net of fee)`);
-    this.book(intent, "FEE_ACCRUED", intent.feeAmount, `fumav fee`);
+    this.book(intent, "FEE_ACCRUED", intent.feeAmount, `jingle fee`);
     return intent;
   }
 
@@ -129,7 +135,7 @@ export class PaymentEngine {
   onChargeback(intentId: string): PaymentIntent {
     const intent = this.get(intentId);
     this.transition(intent, "charged_back");
-    this.book(intent, "CHARGEBACK_ABSORBED", -intent.amount, `Reg E dispute — Fumav absorbs, merchant keeps funds`);
+    this.book(intent, "CHARGEBACK_ABSORBED", -intent.amount, `Reg E dispute — Jingle absorbs, merchant keeps funds`);
     return intent;
   }
 
