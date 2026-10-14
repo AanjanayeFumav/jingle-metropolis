@@ -1,0 +1,17 @@
+{
+  "chainId": 10143,
+  "rpcUrl": "https://testnet-rpc.monad.xyz",
+  "explorerUrl": "https://testnet.monadexplorer.com",
+  "deployedAt": "2026-10-14T00:26:58.890Z",
+  "treasury": "0x9c83aA4A8aE8bcBCD0925B298513EB8D386D86FA",
+  "merchant": "0xc71dAFF64eCc6FAc9DE76C681092634592456459",
+  "testUsd": "0xf03dcc288d3d9e87b836dc57bc3688a18de86b3e",
+  "settlement": "0xa655ef5323a95cceaf81907dd945720cab2de999",
+  "txs": {
+    "deployTestUsd": "0x8340d6013167de40d5799580e300df8d83b405d5a2b8e87d3d89ae3d691f487d",
+    "deploySettlement": "0x8ec61abfd88b47d63ac676964649ee7dab7847c0bac7b95e13fd208cadb00b5c",
+    "mint": "0x2d787dc35ed6a00697f6ba9f90dee483a26712dad05155a9dcd106fedb17637e",
+    "approve": "0x11fa64d23eae6a47915ef327dcc6d3f911d1ebbba6c27270bf209c67df54a1b3",
+    "fundReserve": "0xc6b3eb18ef0fdd37b5144c0f2efd7c6d54b478dbc40c8e5a97d022cf4a11dd9a"
+  }
+}
