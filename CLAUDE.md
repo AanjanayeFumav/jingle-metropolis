@@ -1,4 +1,6 @@
-# Fumav — Agent Context
+# Jingle (formerly Fumav) — Agent Context
+
+**Oct 13, 2026 — Monad Metropolis build.** Read `BUILD_PRD.md` (hackathon plan) and `README.md` first. Settlement now runs on Monad through `packages/monad` + `contracts/`; `MONAD=true` is the demo mode. Astra/Bridge below are pre-existing and not exercised in the demo. Everything else in this file still holds.
 
 **Scope rule:** payment-flow, technical architecture, and integration contracts ONLY. Do not pull GTM/investor content into this repo's context.
 
