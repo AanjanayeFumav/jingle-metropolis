@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jingle - Operator console</title>
+<style>
+  :root { --bg:#0a0b10; --panel:#12141c; --panel2:#181b26; --line:#242838; --ink:#eef0f6; --muted:#8a90a6; --mon:#836ef9; --mon2:#a596ff; --ok:#3ddc84; --warn:#f5b942; --bad:#ff6b6b; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, "JetBrains Mono", monospace; background:var(--bg); color:var(--ink); font-size:12.5px; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1180px; margin:0 auto; padding:20px 18px 50px; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .mark { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--mon), #4b3bd6); display:flex; align-items:center; justify-content:center; font-weight:900; font-family:-apple-system, sans-serif; }
+  .brand b { font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size:16px; }
+  .brand .sub { color:var(--muted); }
+  .badge { margin-left:auto; font-size:10.5px; font-weight:800; letter-spacing:.6px; padding:5px 10px; border-radius:20px; border:1.5px solid var(--mon); color:var(--mon2); }
+  .badge.mock { border-color:var(--line); color:var(--muted); }
+  .badge.bad { border-color:var(--bad); color:var(--bad); }
+  nav { display:flex; gap:14px; margin-bottom:16px; font-size:12px; }
+  nav a { color:var(--muted); text-decoration:none; } nav a.on { color:var(--ink); border-bottom:2px solid var(--mon); padding-bottom:2px; }
+  .grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:12px; }
+  @media (max-width:900px) { .grid { grid-template-columns:repeat(3,1fr); } }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; }
+  .stat .l { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .stat .v { font-size:19px; font-weight:800; margin-top:5px; font-variant-numeric:tabular-nums; }
+  .stat .v.mon { color:var(--mon2); } .stat .v.ok { color:var(--ok); } .stat .v.warn { color:var(--warn); }
+  .stat .d { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size:13.5px; font-weight:800; }
+  .card .note { color:var(--muted); font-size:11px; margin:3px 0 10px; }
+  .kv { display:grid; grid-template-columns:150px 1fr; gap:6px 12px; font-size:12px; }
+  .kv .k { color:var(--muted); }
+  a { color:var(--mon2); text-decoration:none; } a:hover { text-decoration:underline; }
+  .thead, .trow { display:grid; grid-template-columns: 1.1fr .8fr 1.1fr 1.7fr 1.5fr 1fr; gap:10px; align-items:center; }
+  .thead { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; padding:6px 2px; border-bottom:1px solid var(--line); }
+  .trow { padding:10px 2px; border-bottom:1px solid #1c2030; }
+  .trow:last-child { border:none; }
+  .trow.flash { animation: rowin 1.2s ease; } @keyframes rowin { from { background:rgba(131,110,249,.18);} to { background:transparent;} }
+  .chip { display:inline-block; font-size:10.5px; font-weight:700; border-radius:7px; padding:3px 8px; white-space:nowrap; }
+  .chip.ok { color:#0a2e1c; background:var(--ok); } .chip.wait { color:#3b2a00; background:var(--warn); } .chip.cb { color:#fff; background:var(--mon); } .chip.neutral { color:var(--muted); background:var(--panel2); }
+  .t2 { font-size:10.5px; color:var(--muted); margin-top:2px; }
+  .net { font-weight:800; color:var(--ok); font-variant-numeric:tabular-nums; }
+  .btn { font-family:inherit; font-size:11px; font-weight:800; padding:7px 10px; border-radius:8px; border:1.5px solid var(--mon); background:transparent; color:var(--mon2); cursor:pointer; }
+  .btn:hover { background:rgba(131,110,249,.15); } .btn[disabled] { opacity:.45; cursor:default; }
+  .empty { padding:18px; text-align:center; color:var(--muted); }
+  .lrow { display:grid; grid-template-columns: 70px 190px 90px 1fr; gap:10px; padding:6px 2px; border-bottom:1px solid #1c2030; }
+  .lrow .am { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; } .lrow .am.neg { color:var(--bad);} .lrow .am.pos { color:var(--ok);} .lrow .memo, .lrow .ts { color:var(--muted); }
+  .err { color:var(--bad); font-size:11px; }
+  .foot { text-align:center; color:var(--muted); font-size:11px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="mark">J</div><b>Jingle</b><span class="sub">operator console</span><span id="badge" class="badge mock">CONNECTING</span></div>
+  <nav><a href="/checkout">Player checkout</a><a href="/">Merchant view</a><a class="on" href="/ops">Operator console</a></nav>
+
+  <div class="grid">
+    <div class="stat"><div class="l">Treasury (tUSD)</div><div id="b-tre" class="v">-</div><div class="d" id="b-mon">gas: - MON</div></div>
+    <div class="stat"><div class="l">Merchant received</div><div id="b-mer" class="v ok">-</div><div class="d" id="mername">on-chain balance</div></div>
+    <div class="stat"><div class="l">Dispute reserve</div><div id="b-res" class="v mon">-</div><div class="d">held in contract</div></div>
+    <div class="stat"><div class="l">Settled on Monad</div><div id="b-set" class="v">-</div><div class="d">contract total</div></div>
+    <div class="stat"><div class="l">Disputes absorbed</div><div id="b-dis" class="v warn">-</div><div class="d">merchant never debited</div></div>
+    <div class="stat"><div class="l">Fees earned</div><div id="o-fees" class="v">-</div><div class="d">ledger, 3% or 35&cent;</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Contracts on Monad</h3>
+    <div class="note" id="chainnote">Waiting for /api/ops</div>
+    <div class="kv" id="kv"></div>
+  </div>
+
+  <div class="card">
+    <h3>Payments</h3>
+    <div class="note">Each settle() is one Monad transaction: merchant paid, fee into the reserve, event keyed by the payment id. A dispute is a second transaction from the reserve.</div>
+    <div class="thead"><div>Payment</div><div>Net / fee</div><div>Status</div><div>Settlement tx</div><div>Dispute tx</div><div></div></div>
+    <div id="opserr" class="err" style="display:none; margin-bottom:8px"></div>
+    <div id="rows"><div class="empty">No payments yet. Open <a href="/checkout">/checkout</a> and tap pay.</div></div>
+  </div>
+
+  <div class="card">
+    <h3>Ledger</h3>
+    <div class="note">Every money movement the engine booked, newest first. TREASURY_FRONT and CHARGEBACK_ABSORBED are Jingle's exposure; MERCHANT_PAYOUT is the studio's money.</div>
+    <div id="ledger"><div class="empty">Empty</div></div>
+  </div>
+  <div class="foot">Monad testnet &middot; simulated funds &middot; bank leg is the sandbox clockwork (clears ~20s after settlement)</div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const usd = (c) => (c < 0 ? "-" : "") + "$" + (Math.abs(c) / 100).toFixed(2);
+  const short = (h) => h ? h.slice(0, 10) + "…" + h.slice(-6) : "-";
+  const when = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+  const chip = (s) => ({ settled: "ok", replenished: "ok", charged_back: "cb", loss_absorbed: "cb", fronting: "wait", ach_initiated: "wait", created: "wait", holding: "wait" })[s] || "neutral";
+  const DISPUTABLE = new Set(["settled", "replenished"]);
+  const known = new Set(); let first = true; let busy = new Set();
+  const secs = (a, b) => (a && b) ? ((new Date(b) - new Date(a)) / 1000).toFixed(1) + "s" : "";
+
+  function renderOps(o) {
+    $("o-fees").textContent = usd(o.operator.feesEarned);
+    $("mername").textContent = o.merchantName || "merchant";
+    if (!o.chain) { $("badge").textContent = o.mode.toUpperCase(); $("badge").className = "badge mock"; $("chainnote").textContent = "MOCK mode: no chain. Start with npm run dev:monad for live settlement."; return; }
+    const c = o.chain;
+    if (c.error) { $("badge").textContent = "RPC ERROR"; $("badge").className = "badge bad"; $("chainnote").innerHTML = '<span class="err">' + c.error + '</span>'; return; }
+    $("badge").textContent = "MONAD " + c.chainId; $("badge").className = "badge";
+    $("chainnote").textContent = "chain " + c.chainId + " · explorer " + c.explorerUrl;
+    $("kv").innerHTML = [
+      ["JingleSettlement", '<a target="_blank" href="' + c.links.settlement + '">' + c.settlement + '</a>'],
+      ["TestUSD (6 dec)", c.testUsd],
+      ["Treasury / operator", '<a target="_blank" href="' + c.links.treasury + '">' + c.treasury + '</a>'],
+      ["Merchant wallet", '<a target="_blank" href="' + c.links.merchant + '">' + c.merchant + '</a>'],
+      ["Deploy txs", Object.entries(c.deployTxs || {}).map(([k, h]) => k + ' <a target="_blank" href="' + c.explorerUrl + '/tx/' + h + '">' + short(h) + '</a>').join(" · ")],
+    ].map(([k, v]) => '<div class="k">' + k + '</div><div>' + v + '</div>').join("");
+    const b = c.balances;
+    $("b-tre").textContent = usd(b.treasuryUsd); $("b-mon").textContent = "gas: " + b.treasuryMon + " MON";
+    $("b-mer").textContent = usd(b.merchantUsd); $("b-res").textContent = usd(b.reserve);
+    $("b-set").textContent = usd(b.totalSettled); $("b-dis").textContent = usd(b.totalDisputed);
+  }
+
+  function renderPayments(list) {
+    if (!list.length) { $("rows").innerHTML = '<div class="empty">No payments yet. Open <a href="/checkout">/checkout</a> and tap pay.</div>'; first = false; return; }
+    $("rows").innerHTML = list.map(p => {
+      const isNew = !first && !known.has(p.id); known.add(p.id);
+      const s = p.settlement, d = p.dispute;
+      const stx = s.transferId ? (s.recordUrl ? '<a target="_blank" href="' + s.recordUrl + '">' + short(s.transferId) + '</a>' : short(s.transferId)) : "-";
+      const dtx = d && d.ref ? (d.recordUrl ? '<a target="_blank" href="' + d.recordUrl + '">' + short(d.ref) + '</a>' : short(d.ref)) : "-";
+      const can = DISPUTABLE.has(p.status) && !busy.has(p.id);
+      return '<div class="trow' + (isNew ? " flash" : "") + '">' +
+        '<div><div>' + p.id + '</div><div class="t2">' + when(p.createdAt) + '</div>' + (p.error ? '<div class="err">' + p.error + '</div>' : '') + '</div>' +
+        '<div><div class="net">' + usd(p.net) + '</div><div class="t2">fee ' + usd(p.fee) + ' of ' + usd(p.amount) + '</div></div>' +
+        '<div><span class="chip ' + chip(p.status) + '">' + p.statusLabel + '</span><div class="t2">bank: ' + p.bankDebit.routineLabel + '</div></div>' +
+        '<div><div>' + stx + '</div><div class="t2">' + (s.label || "") + (s.confirmedAt ? " · " + secs(p.createdAt, s.confirmedAt) + " tap→block" : "") + '</div></div>' +
+        '<div><div>' + dtx + '</div><div class="t2">' + (d && d.confirmedAt ? "reserve absorbed " + usd(p.amount) : "") + '</div></div>' +
+        '<div>' + (DISPUTABLE.has(p.status) ? '<button class="btn" data-id="' + p.id + '"' + (can ? "" : " disabled") + '>Simulate Reg E dispute</button>' : '') + '</div>' +
+        '</div>';
+    }).join("");
+    first = false;
+  }
+
+  function renderLedger(entries) {
+    if (!entries.length) { $("ledger").innerHTML = '<div class="empty">Empty</div>'; return; }
+    $("ledger").innerHTML = entries.slice(0, 40).map(e =>
+      '<div class="lrow"><div class="ts">' + when(e.occurredAt) + '</div><div>' + e.type + '</div>' +
+      '<div class="am ' + (e.amount < 0 ? "neg" : e.amount > 0 ? "pos" : "") + '">' + usd(e.amount) + '</div>' +
+      '<div class="memo">' + e.paymentIntentId + ' · ' + (e.memo || "") + '</div></div>').join("");
+  }
+
+  $("rows").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-id]"); if (!b) return;
+    const id = b.dataset.id; busy.add(id); b.disabled = true; b.textContent = "Absorbing on Monad…";
+    try {
+      const res = await fetch("/api/payments/" + id + "/dispute", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) showErr("Dispute failed: " + (body.error || res.status));
+    } catch (err) { showErr("Dispute failed: " + err.message); }
+    busy.delete(id); tick();
+  });
+
+  function showErr(m) { $("opserr").textContent = m; $("opserr").style.display = "block"; setTimeout(() => { $("opserr").style.display = "none"; }, 8000); }
+  async function tick() {
+    try {
+      const [pay, ledger] = await Promise.all([fetch("/api/payments").then(r => r.json()), fetch("/api/ledger").then(r => r.json())]);
+      renderPayments(pay.payments); renderLedger(ledger.entries);
+    } catch (e) { $("badge").textContent = "OFFLINE"; $("badge").className = "badge bad"; }
+  }
+  async function tickOps() {
+    try { renderOps(await fetch("/api/ops").then(r => r.json())); } catch (e) {}
+  }
+  tick(); tickOps(); setInterval(tick, 1000); setInterval(tickOps, 3000);
+</script>
+</body>
+</html>

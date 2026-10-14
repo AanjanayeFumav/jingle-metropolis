@@ -290,7 +290,7 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
     });
   });
 
-  app.use(express.static(fileURLToPath(new URL("../public", import.meta.url))));
+  app.use(express.static(fileURLToPath(new URL("../public", import.meta.url)), { extensions: ["html"] }));
 
   return { app, ctx };
 }

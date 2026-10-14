@@ -62,7 +62,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
       mode: "mock",
       engine,
       reconciler: new Reconciler(engine),
-      readers: new MockReaders(mockOpts),
+      readers: new MockReaders(mockOpts ?? { bridgeStepMs: 1_500, astraClearMs: 20_000 }),
       defaultPlayerId: "player_demo",
       merchantId: DEMO_MERCHANT_ID,
       merchantName: DEMO_MERCHANT_NAME,

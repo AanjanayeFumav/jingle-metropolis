@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fumav - Merchant settlement</title>
+<title>Jingle - Merchant settlement</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f7f8f7; color:#1a1c1a; }
@@ -63,29 +63,32 @@
   .operator .hd { grid-column: 1 / -1; font-size:11px; color:#9db4d4; margin-bottom:-2px; }
   .foot { text-align:center; font-size:10.5px; color:#a0a6a0; margin-top:18px; }
   .err { color:#8a1c1c; font-size:10.5px; margin-top:2px; }
+  a { color:#0a8f47; font-weight:700; text-decoration:none; } a:hover { text-decoration:underline; }
+  nav { display:flex; gap:14px; margin:10px 0 0; font-size:12px; } nav a { color:#7a807a; font-weight:600; } nav a.on { color:#1a1c1a; border-bottom:2px solid #00A844; padding-bottom:2px; }
   @media (max-width: 760px) { .statgrid { grid-template-columns:repeat(2,1fr); } .thead { display:none; } .trow { grid-template-columns:1fr; gap:6px; } .operator { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="brand">
-    <div class="mark">F</div><b>Fumav</b><span class="sub">Merchant settlement</span>
+    <div class="mark">J</div><b>Jingle</b><span class="sub">Merchant settlement</span>
     <span id="badge" class="badge mock">CONNECTING</span><span id="updated" class="updated"></span>
   </div>
-  <div class="merchant">Merchant: <b id="merchant">-</b> &middot; Payouts arrive by bank transfer, same day, net of the Fumav fee. Player bank debits clear on their own schedule and never affect a payout already made.</div>
+  <nav><a href="/checkout">Player checkout</a><a class="on" href="/">Merchant view</a><a href="/ops">Operator console</a></nav>
+  <div class="merchant">Merchant: <b id="merchant">-</b> &middot; Payouts arrive by bank transfer, same day, net of the Jingle fee. Player bank debits clear on their own schedule and never affect a payout already made. A dispute is covered by Jingle; your payout stays.</div>
 
   <div class="statgrid">
     <div class="stat"><div class="l">Paid out</div><div id="s-paid" class="v green">$0.00</div><div class="d" id="s-paid-d">0 payments</div></div>
     <div class="stat"><div class="l">In flight</div><div id="s-flight" class="v">$0.00</div><div class="d" id="s-flight-d">0 payments</div></div>
-    <div class="stat"><div class="l">Fumav fees</div><div id="s-fees" class="v">$0.00</div><div class="d">3% or 35&cent; minimum</div></div>
+    <div class="stat"><div class="l">Jingle fees</div><div id="s-fees" class="v">$0.00</div><div class="d">3% or 35&cent; minimum</div></div>
     <div class="stat"><div class="l">Returned</div><div id="s-ret" class="v">0</div><div class="d">no payout made</div></div>
   </div>
 
   <div class="card">
     <h3>Payments</h3>
-    <div class="note">Newest first. Each payment shows both legs with the live object ids from the payment rails.</div>
+    <div class="note">Newest first. Each payment shows both legs. Payouts carry a public settlement record.</div>
     <div class="thead"><div>Payment</div><div>Amount</div><div>Status</div><div>Player bank debit</div><div>Payout to you</div></div>
-    <div id="rows"><div class="empty">No payments yet. Run <span class="mono">npm run pay</span>.</div></div>
+    <div id="rows"><div class="empty">No payments yet. Open <a href="/checkout">/checkout</a> and tap pay.</div></div>
   </div>
 
   <div class="card">
@@ -94,16 +97,7 @@
     <div id="ledger" class="ledger"><div class="empty">Empty</div></div>
   </div>
 
-  <div class="operator">
-    <div class="hd">Operator view (Fumav treasury, not merchant funds)</div>
-    <div><div class="l">Fronted</div><div id="o-fronted" class="v">$0.00</div></div>
-    <div><div class="l">Replenished</div><div id="o-repl" class="v">$0.00</div></div>
-    <div><div class="l">Fees earned</div><div id="o-fees" class="v">$0.00</div></div>
-    <div><div class="l">Losses absorbed</div><div id="o-loss" class="v">$0.00</div></div>
-    <div><div class="l">Disputes covered</div><div id="o-cb" class="v">$0.00</div></div>
-  </div>
-
-  <div class="foot">Sandbox &mdash; simulated funds. Bank debits and payouts are real sandbox objects at the payment rails; no real money moves.</div>
+  <div class="foot">Sandbox, simulated funds. No real money moves. <a href="/checkout">Player checkout</a> &middot; <a href="/ops">Operator console</a></div>
 </div>
 
 <script>
@@ -124,9 +118,9 @@
 
   function render(data, summary, health) {
     const list = data.payments;
-    $("badge").textContent = data.mode === "live" ? "LIVE SANDBOX" : "MOCK";
-    $("badge").className = "badge " + (data.mode === "live" ? "" : "mock");
-    $("merchant").textContent = list[0] ? list[0].merchantId : "merch_sarena";
+    $("badge").textContent = data.mode === "mock" ? "MOCK" : "LIVE SETTLEMENT";
+    $("badge").className = "badge " + (data.mode === "mock" ? "mock" : "");
+    $("merchant").textContent = (data.merchantName || "") + " (" + (data.merchantId || "") + ")";
     $("updated").textContent = "updated " + when(new Date().toISOString());
 
     const paid = list.filter(p => PAID.has(p.status)), flight = list.filter(p => FLIGHT.has(p.status));
@@ -135,7 +129,7 @@
     $("s-fees").textContent = usd(paid.reduce((s, p) => s + p.fee, 0));
     $("s-ret").textContent = String(list.filter(p => p.status === "returned").length);
 
-    if (!list.length) { $("rows").innerHTML = '<div class="empty">No payments yet. Run <span class="mono">npm run pay</span>.</div>'; }
+    if (!list.length) { $("rows").innerHTML = '<div class="empty">No payments yet. Open <a href="/checkout">/checkout</a> and tap pay.</div>'; }
     else {
       $("rows").innerHTML = list.map(p => {
         const isNew = !firstLoad && !known.has(p.id); known.add(p.id);
@@ -145,15 +139,12 @@
           '<div><div class="net">' + usd(p.net) + '</div><div class="amt">' + usd(p.amount) + ' &minus; fee ' + usd(p.fee) + '</div></div>' +
           '<div><span class="chip ' + chipClass(p.status) + '">' + p.statusLabel + '</span></div>' +
           leg("Bank debit", bank.routineLabel, bank.routineId ? "routine " + short(bank.routineId) : "", false, bank.transferId ? "transfer " + short(bank.transferId) + " &middot; " + (bank.transferStatus || "") + (bank.failureReason ? " &middot; " + bank.failureReason : "") : (bank.checkedAt ? "checked " + when(bank.checkedAt) : "")) +
-          leg("Payout", pay.label, pay.transferId ? "transfer " + short(pay.transferId) : "", pay.failed, pay.checkedAt ? "checked " + when(pay.checkedAt) : "") +
+          leg("Payout", pay.label, pay.transferId ? (pay.recordUrl ? '<a target="_blank" href="' + pay.recordUrl + '">settlement record</a> ' + short(pay.transferId) : "transfer " + short(pay.transferId)) : "", pay.failed, (p.dispute && p.dispute.ref) ? 'dispute covered by Jingle ' + (p.dispute.recordUrl ? '(<a target="_blank" href="' + p.dispute.recordUrl + '">record</a>)' : "") : (pay.confirmedAt ? "delivered " + when(pay.confirmedAt) : (pay.checkedAt ? "checked " + when(pay.checkedAt) : ""))) +
           '</div>';
       }).join("");
     }
     firstLoad = false;
 
-    const o = summary.operator;
-    $("o-fronted").textContent = usd(o.fronted); $("o-repl").textContent = usd(o.replenished); $("o-fees").textContent = usd(o.feesEarned);
-    $("o-loss").textContent = usd(o.lossesAbsorbed); $("o-cb").textContent = usd(o.chargebacksAbsorbed);
   }
 
   function renderLedger(entries) {

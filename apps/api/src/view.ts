@@ -18,7 +18,7 @@ export const STATUS_LABEL: Record<PaymentIntentStatus, string> = {
   charged_back: "Paid out - dispute covered by Jingle",
 };
 
-/** Settlement states in merchant words (Bridge transfer states, and the Monad receipt states mapped onto them). */
+/** Settlement states in merchant words (rail transfer states, and the settlement receipt states mapped onto them). */
 const SETTLEMENT_LABEL: Record<string, string> = {
   in_review: "Submitted",
   awaiting_funds: "Submitted",
@@ -73,7 +73,7 @@ export interface PaymentView {
     failed: boolean;
     checkedAt?: string;
     confirmedAt?: string;
-    /** Public settlement record (explorer link in MONAD mode). */
+    /** Public settlement record (public link when the rail has one). */
     recordUrl?: string;
   };
   dispute?: {
