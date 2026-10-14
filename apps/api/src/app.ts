@@ -195,10 +195,14 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
       if (rail.absorbDispute) {
         const r = await rail.absorbDispute({ paymentIntentId: intent.id, merchantId: intent.merchantId, amount: intent.amount });
         ref = r.externalId;
-        // Wait for the receipt so the console shows a confirmed record, not a pending hash.
-        const receipt = await readers.bridgeTransfer(ref);
+        // Wait for the receipt (Monad: about a second) so the console shows a confirmed record, not a pending hash.
+        let receipt = await readers.bridgeTransfer(ref);
+        for (let i = 0; i < 20 && receipt.state === "in_review"; i++) {
+          await new Promise((r) => setTimeout(r, 500));
+          receipt = await readers.bridgeTransfer(ref);
+        }
         if (receipt.state === "error") throw new Error(`dispute transaction reverted: ${ref}`);
-        confirmedAt = (receipt as { confirmedAt?: string }).confirmedAt;
+        confirmedAt = (receipt as { confirmedAt?: string }).confirmedAt ?? new Date().toISOString();
       } else {
         ref = `mock_dispute_${intent.id}`;
         confirmedAt = new Date().toISOString();
