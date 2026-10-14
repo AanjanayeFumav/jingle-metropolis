@@ -10,9 +10,11 @@ Why this matters: a mobile game's web store exists to escape the 30% app-store t
 
 | Surface | URL | Who sees it | Vocabulary |
 |---|---|---|---|
+| Player store | `/store` | the player, in the Starfall web store | items, prices, Buy |
 | Player checkout | `/checkout` | the player, inside "Starfall Pay" (white-label) | dollars, bank, order; stopwatch from tap to settlement |
 | Merchant view | `/` | the studio's finance team | payouts, fees, disputes covered, "settlement record" link |
 | Operator console | `/ops` | Jingle | contracts, treasury, reserve, Monad tx hashes, "Simulate Reg E dispute" |
+| Demo | `/demo` | presenter | all of the above as tabs in one window (arrow keys switch) |
 
 A test enforces that the player and merchant views never contain chain vocabulary (`tests/view-copy.test.ts`).
 

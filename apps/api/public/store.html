@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starfall Studios - Web store</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141926; --panel2:#1b2132; --line:#262d40; --text:#f2f3f7; --muted:#8b93a7; --brand:#6d5df5; --brand2:#b9b3ff; --gold:#f5b942; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(1200px 600px at 70% -10%, #1e1a4a 0%, var(--bg) 55%); color:var(--text); min-height:100vh; }
+  .top { display:flex; align-items:center; gap:10px; padding:14px 22px; border-bottom:1px solid var(--line); }
+  .logo { width:30px; height:30px; border-radius:9px; background: conic-gradient(from 200deg, #f5b942, #ff7a59, #6d5df5, #f5b942); box-shadow: 0 0 24px rgba(245,185,66,.35); }
+  .top b { font-size:15px; } .top .sub { color:var(--muted); font-size:12px; }
+  .top .right { margin-left:auto; font-size:12px; color:var(--muted); } .top .right b { color:var(--text); }
+  .wrap { max-width:1040px; margin:0 auto; padding:26px 22px 40px; }
+  .hero { display:flex; align-items:flex-end; gap:16px; margin-bottom:18px; }
+  h1 { font-size:26px; letter-spacing:-.3px; } .hero p { color:var(--muted); font-size:13px; margin-top:4px; }
+  .pill { margin-left:auto; font-size:11px; font-weight:800; letter-spacing:.5px; color:var(--gold); border:1px solid rgba(245,185,66,.5); background:rgba(245,185,66,.08); padding:5px 10px; border-radius:20px; white-space:nowrap; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .item { background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; }
+  .art { height:140px; position:relative; }
+  .art.a { background: linear-gradient(135deg, #6d5df5, #ff7a59 70%, #f5b942); }
+  .art.b { background: linear-gradient(135deg, #0ea5a4, #6d5df5 65%, #1b2132); }
+  .art.c { background: linear-gradient(135deg, #f5b942, #ff7a59 55%, #6d5df5); }
+  .art::after { content:""; position:absolute; inset:0; background: radial-gradient(260px 120px at 30% 20%, rgba(255,255,255,.35), transparent 60%); }
+  .tag { position:absolute; top:10px; left:10px; z-index:1; font-size:10px; font-weight:800; letter-spacing:.5px; padding:4px 8px; border-radius:20px; background:rgba(0,0,0,.45); color:#fff; }
+  .body { padding:14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+  .n { font-weight:800; font-size:15px; } .d { color:var(--muted); font-size:12.5px; line-height:1.4; flex:1; }
+  .row { display:flex; align-items:center; margin-top:8px; }
+  .price { font-size:18px; font-weight:800; } .was { color:var(--muted); font-size:12px; text-decoration:line-through; margin-left:6px; }
+  .buy { margin-left:auto; background:var(--brand); color:#fff; border:0; border-radius:10px; padding:9px 14px; font-weight:800; font-size:13px; cursor:pointer; text-decoration:none; }
+  .buy:hover { background:#5c4ce6; }
+  .foot { text-align:center; color:var(--muted); font-size:11.5px; margin-top:26px; } .foot b { color:var(--brand2); }
+  @media (max-width: 760px) { .grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="top"><div class="logo"></div><b>Starfall Studios</b><span class="sub">Web store</span><span class="right">Signed in as <b>nova_player</b></span></div>
+  <div class="wrap">
+    <div class="hero">
+      <div><h1>Season 7: Starfall Rising</h1><p>Buy direct from the studio. No app store cut, pay from your bank in one tap.</p></div>
+      <span class="pill">WEB STORE PRICE: 20% BELOW IN-APP</span>
+    </div>
+    <div class="grid">
+      <div class="item"><div class="art a"><span class="tag">FEATURED</span></div><div class="body"><div class="n">Season 7 Pass + 1,000 Stardust</div><div class="d">Every Season 7 reward track, plus 1,000 Stardust to start.</div><div class="row"><span class="price">$19.99</span><span class="was">$24.99</span><a class="buy" href="/checkout?item=Season+7+Pass+%2B+1%2C000+Stardust">Buy</a></div></div></div>
+      <div class="item"><div class="art b"><span class="tag">NEW</span></div><div class="body"><div class="n">Nebula Skin Bundle</div><div class="d">Four legendary ship skins and the Nebula trail effect.</div><div class="row"><span class="price">$19.99</span><span class="was">$24.99</span><a class="buy" href="/checkout?item=Nebula+Skin+Bundle">Buy</a></div></div></div>
+      <div class="item"><div class="art c"><span class="tag">BEST VALUE</span></div><div class="body"><div class="n">2,400 Stardust</div><div class="d">Stardust for crafting, upgrades and the Season 7 market.</div><div class="row"><span class="price">$19.99</span><span class="was">$24.99</span><a class="buy" href="/checkout?item=2%2C400+Stardust">Buy</a></div></div></div>
+    </div>
+    <div class="foot">Powered by <b>Jingle</b> &middot; pay-by-bank for game studios &middot; Sandbox, simulated funds</div>
+  </div>
+</body>
+</html>

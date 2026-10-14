@@ -95,7 +95,7 @@
     <div class="sum" style="margin-top:14px"></div>
     <div class="item">
       <div class="art"></div>
-      <div><div class="t">Season 7 Pass + 1,000 Stardust</div><div class="d">Instant delivery to nova_player</div></div>
+      <div><div class="t" id="itemname">Season 7 Pass + 1,000 Stardust</div><div class="d">Instant delivery to nova_player</div></div>
       <div class="p">$19.99</div>
     </div>
     <div class="sum">
@@ -133,7 +133,7 @@
     <div class="steps">
       <div class="step" id="st1"><div class="ic">1</div><div><div class="t">Bank debit scheduled</div><div class="s">$19.99 from your linked account</div></div></div>
       <div class="step" id="st2"><div class="ic">2</div><div><div class="t">Studio paid</div><div class="s">Starfall Studios receives $19.39, net of the payment fee</div></div></div>
-      <div class="step" id="st3"><div class="ic">3</div><div><div class="t">Your order unlocked</div><div class="s">Season 7 Pass + 1,000 Stardust delivered</div></div></div>
+      <div class="step" id="st3"><div class="ic">3</div><div><div class="t">Your order unlocked</div><div class="s"><span id="itemname2">Season 7 Pass + 1,000 Stardust</span> delivered</div></div></div>
     </div>
     <div class="receipt" id="receipt">
       <div class="h">Paid</div>
@@ -174,6 +174,9 @@
   const $ = (id) => document.getElementById(id);
   const usd = (c) => "$" + (c / 100).toFixed(2);
   const AMOUNT = 1999;
+  // The store hands over the item name; the price tier is the same for every featured item.
+  const ITEM = (new URLSearchParams(location.search).get("item") || "").slice(0, 60);
+  if (ITEM) { $("itemname").textContent = ITEM; $("itemname2").textContent = ITEM; }
   const DONE = new Set(["settled", "replenished", "charged_back", "loss_absorbed"]);
   let bank = null;
   try { bank = JSON.parse(sessionStorage.getItem("starfall.bank") || "null"); } catch (e) {}
