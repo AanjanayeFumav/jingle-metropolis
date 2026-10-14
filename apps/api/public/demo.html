@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jingle - Demo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#0b0e14; color:#fff; display:flex; flex-direction:column; }
+  .bar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:#101a2b; border-bottom:1px solid #1e2a40; }
+  .mark { width:24px; height:24px; border-radius:7px; background:#00A844; color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .bar b { font-size:14px; margin-right:10px; }
+  .tab { padding:6px 12px; border-radius:8px; font-size:12.5px; font-weight:700; color:#9db4d4; cursor:pointer; border:1px solid transparent; }
+  .tab:hover { color:#fff; }
+  .tab.on { color:#fff; background:#1b2a44; border-color:#2b3d5e; }
+  .tab small { display:block; font-weight:500; font-size:10.5px; color:#7f93b3; margin-top:1px; }
+  .tab.on small { color:#b7c6df; }
+  .who { margin-left:auto; font-size:11px; color:#7f93b3; }
+  .stage { flex:1; position:relative; }
+  iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:#fff; display:none; }
+  iframe.on { display:block; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="mark">J</div><b>Jingle demo</b>
+    <div class="tab on" data-f="player">Player<small>Starfall web store checkout</small></div>
+    <div class="tab" data-f="merchant">Merchant<small>Starfall finance view</small></div>
+    <div class="tab" data-f="setup">Payout setup<small>merchant onboarding</small></div>
+    <div class="tab" data-f="ops">Operator<small>Jingle console on Monad</small></div>
+    <span class="who" id="who">one space, three audiences: the player, the studio, Jingle</span>
+  </div>
+  <div class="stage">
+    <iframe id="player" class="on" src="/checkout" title="Player checkout"></iframe>
+    <iframe id="merchant" src="/" title="Merchant view"></iframe>
+    <iframe id="setup" src="/merchant/setup" title="Merchant payout setup"></iframe>
+    <iframe id="ops" src="/ops" title="Operator console"></iframe>
+  </div>
+<script>
+  document.querySelectorAll(".tab").forEach((t) => t.onclick = () => {
+    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === t));
+    document.querySelectorAll("iframe").forEach((f) => f.classList.toggle("on", f.id === t.dataset.f));
+  });
+  document.addEventListener("keydown", (e) => {
+    const tabs = [...document.querySelectorAll(".tab")]; const i = tabs.findIndex((t) => t.classList.contains("on"));
+    if (e.key === "ArrowRight") tabs[(i + 1) % tabs.length].click();
+    if (e.key === "ArrowLeft") tabs[(i - 1 + tabs.length) % tabs.length].click();
+  });
+</script>
+</body>
+</html>

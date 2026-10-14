@@ -60,6 +60,11 @@
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; }
   .foot { grid-column:1 / -1; text-align:center; color:var(--muted); font-size:11.5px; margin-top:6px; }
   .foot b { color:#b9b3ff; }
+  .peek { display:flex; align-items:center; gap:10px; margin:-4px 0 12px; padding:7px 10px; border-radius:9px; background:rgba(245,185,66,.1); border:1px dashed rgba(245,185,66,.55); }
+  .peekl { font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#f5b942; }
+  .peekbtn { margin-left:auto; background:transparent; color:#f5b942; border:1px solid rgba(245,185,66,.55); border-radius:7px; padding:3px 9px; font-size:11px; font-weight:700; cursor:pointer; }
+  #tlcard.hidden > :not(.peek) { display:none; }
+  #tlcard.hidden { align-self:start; }
   /* bank link modal */
   .modal { position:fixed; inset:0; background:rgba(5,6,12,.72); display:none; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(4px); }
   .modal.open { display:flex; }
@@ -69,7 +74,7 @@
   .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; margin-top:14px; }
   .inst { padding:13px 12px; border:1.5px solid #e6e8ef; border-radius:12px; cursor:pointer; font-weight:700; font-size:13px; display:flex; align-items:center; gap:9px; }
   .inst:hover { border-color:#6d5df5; background:#f6f4ff; }
-  .inst i { width:22px; height:22px; border-radius:6px; display:inline-block; }
+  .inst svg { width:28px; height:28px; border-radius:7px; flex:none; box-shadow:0 1px 2px rgba(0,0,0,.12); }
   .form { margin-top:14px; display:none; }
   .form label { display:block; font-size:11.5px; color:#5b6170; margin:10px 0 5px; font-weight:700; }
   .form input { width:100%; padding:11px 12px; border:1.5px solid #e6e8ef; border-radius:10px; font-size:14px; }
@@ -118,7 +123,8 @@
     <div class="err" id="err"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="tlcard">
+    <div class="peek"><span class="peekl">Behind the scenes &middot; the player never sees this panel</span><button class="peekbtn" id="peekbtn" type="button">Hide</button></div>
     <h2>Payment timeline</h2>
     <div class="watch">
       <div class="n" id="clock">0.00<small>s</small></div>
@@ -147,12 +153,14 @@
     <h3>Link your bank</h3>
     <p>Pick your bank. In production this is the Plaid Link flow; in the sandbox any login works.</p>
     <div class="grid" id="insts">
-      <div class="inst" data-n="Chase"><i style="background:#117aca"></i>Chase</div>
-      <div class="inst" data-n="Bank of America"><i style="background:#e31837"></i>Bank of America</div>
-      <div class="inst" data-n="Wells Fargo"><i style="background:#d71e28"></i>Wells Fargo</div>
-      <div class="inst" data-n="Capital One"><i style="background:#004977"></i>Capital One</div>
-      <div class="inst" data-n="Chime"><i style="background:#1ec677"></i>Chime</div>
-      <div class="inst" data-n="Citi"><i style="background:#003b70"></i>Citi</div>
+      <div class="inst" data-n="Chase">
+        <svg viewBox="0 0 40 40"><rect width="40" height="40" fill="#fff"/><g fill="#117aca"><path d="M14 8h13l-5 5h-8z"/><path d="M32 14v13l-5-5v-8z"/><path d="M26 32H13l5-5h8z"/><path d="M8 26V13l5 5v8z"/></g></svg>Chase</div>
+      <div class="inst" data-n="Bank of America">
+        <svg viewBox="0 0 40 40"><rect width="40" height="40" fill="#fff"/><g stroke-width="3.2" fill="none" stroke-linecap="round"><path d="M8 27 L26 11" stroke="#e31837"/><path d="M12 31 L30 15" stroke="#012169"/><path d="M16 33 L33 18" stroke="#e31837"/></g><path d="M9 14l8-4 6 2-8 4z" fill="#012169"/></svg>Bank of America</div>
+      <div class="inst" data-n="Wells Fargo">
+        <svg viewBox="0 0 40 40"><rect width="40" height="40" fill="#d71e28"/><rect x="6" y="15" width="28" height="10" fill="#ffcd41"/><text x="20" y="22.8" font-family="Georgia,serif" font-weight="700" font-size="7.2" fill="#d71e28" text-anchor="middle" letter-spacing=".3">WELLS</text></svg>Wells Fargo</div>
+      <div class="inst" data-n="Citi">
+        <svg viewBox="0 0 40 40"><rect width="40" height="40" fill="#fff"/><text x="20" y="27" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="15" fill="#003b70" text-anchor="middle" letter-spacing="-.5">citi</text><path d="M12 15 Q20 5 28 15" stroke="#e31837" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>Citi</div>
     </div>
     <div class="form" id="form">
       <label>Username</label><input id="u" value="user_good" />
@@ -179,6 +187,7 @@
   }
   paintBank();
 
+  $("peekbtn").onclick = () => { const h = $("tlcard").classList.toggle("hidden"); $("peekbtn").textContent = h ? "Show" : "Hide"; };
   $("banklnk").onclick = () => { $("modal").classList.add("open"); $("form").style.display = "none"; };
   $("modal").onclick = (e) => { if (e.target === $("modal")) $("modal").classList.remove("open"); };
   let picked = null;
