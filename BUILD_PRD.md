@@ -1,62 +1,47 @@
-# BUILD PRD — Fumav MVP-Visible (Sandbox, Real Transactions)
-*Handoff doc for the build session. Read CLAUDE.md first, then this. Everything here is decided — build, don't re-litigate. GTM/investor context deliberately excluded; do not go looking for it.*
+# Jingle on Monad - Metropolis build plan (Oct 13, 2026)
 
-## Goal
+*Locked plan for the Monad Metropolis hackathon submission (Track 02: Consumer Products & Payments). Supersedes the Sep 21 Session 4 plan. Deadline: Oct 13, 20:59 PDT. Paired session: Aanjanaye + Claude.*
 
-**Real transactions, visible live.** A payment initiated by a test player flows through Astra's sandbox (real ACH objects) and Bridge's sandbox (schema-true, simulated money), and appears in a merchant view reading live data. NOT production, NOT real money. Success = a watcher says "that's a real system."
+## What we are submitting
 
-Why: two market sources (Stash CGO + founder's own read, Sep 9) said frontend demos no longer suffice.
+Jingle is pay-by-bank for game studios. A player links a bank once and pays in one tap. The studio is paid the same second, in dollars, and is never debited for a chargeback. Behind the scenes Jingle fronts the payout from its treasury and settles on Monad; the player's ACH replenishes the treasury a day later.
 
-## What exists (inventory)
+Monad is the settlement layer. Every merchant payout is a `settle()` call on the `JingleSettlement` contract; every Reg E dispute is an `absorbDispute()` call that draws from an on-chain reserve so the merchant is never clawed back. Both are visible as transactions with the payment id in the event.
 
-- `packages/core` — PaymentIntent state machine + ledger types. **First task: update pricing constants to rate 0.03 / floorCents 35** (code still has old 40¢ floor; locked pricing is 3% or $0.35)
-- `packages/core/src/rails.ts` — ConsumerRail / SettlementRail / RiskEngine seams. Bridge implements SettlementRail behind the seam (vendor must stay swappable)
-- `packages/astra` — typed client: `createUserIntent` (exact fields verified vs their OpenAPI), `getUserIntent`, `exchangeAuthorizationCode`
-- `packages/orchestrator` — PaymentEngine (transitions + ledger writes) + mock rails
-- `scripts/smoke-astra.ts` — ready; never run. `scripts/simulate.ts` — works, mock-only
-- `.env` — Astra client id/secret + Bridge sk-test set. `SMOKE_PHONE` = founder's cell
-- `Astro_Pay_Demo.html` — superseded visual demo; ignore
+## What already existed (built Sep 12-17, inside the hackathon window)
 
-## Locked decisions (do not reopen)
+`packages/core` (payment state machine + ledger), `packages/orchestrator` (engine, pricing, mock rails), `apps/api` (Express API, reconciler, pollers, snapshot, merchant view), the Astra and Bridge clients and rails, 31 tests. Repo history carries those commits.
 
-T-1 only, behind the RiskEngine stub · per-merchant wallet + daily-sweep model (in sandbox: display-level) · payment custody ≠ loot custody · crypto invisible in all UI copy · pricing 3% or $0.35 · NO consumer balances, NO payouts, NO T-4, NO Game_Pay skin config, NO production keys — all explicitly out of scope.
+## What this build adds (Oct 13)
 
-## Session plan + acceptance criteria
+1. **`contracts/`** - `JingleSettlement.sol` (settle with fee split into an on-chain reserve; absorbDispute from the reserve; events keyed by payment id) + `TestUSD.sol` (6-decimal mintable test dollar standing in for USDC on testnet). Compiled with solc-js; ABI + bytecode committed under `contracts/artifacts/`.
+2. **`scripts/deploy-monad.ts`** - deploys both contracts to Monad testnet from the treasury key, mints TestUSD to the treasury, approves the settlement contract, funds the reserve. Writes `deployments/monad-testnet.json` (addresses + tx hashes, committed; no secrets).
+3. **`packages/monad`** - `MonadSettlementRail` (implements `SettlementRail`: `settleToMerchant` -> `settle()` tx; `absorbDispute` -> `absorbDispute()` tx) + `MonadReaders` (tx receipt -> settlement state).
+4. **Engine seam** - `SettlementRail.settleToMerchant` now receives `fee` alongside the net amount; optional `absorbDispute`. `TRANSITIONS` untouched.
+5. **API** - `MONAD=true` runtime mode (mock bank leg + live Monad settlement). `POST /api/payments/:id/dispute` (demo trigger for a Reg E dispute). `GET /api/ops` (treasury, reserve, contract addresses, tx hashes).
+6. **Views** - `/checkout` (player: "[Game] Pay", bank link, one tap, stopwatch to settlement), `/` (merchant: dollars only, no chain vocabulary, "settlement record" link), `/ops` (Jingle operator console: everything on-chain, dispute button).
+7. **`npm run reset`** - clean demo state. **`npm run monad:check`** - chain id, treasury MON + TestUSD balances, reserve.
+8. **README** as the project write-up; MIT license; AI disclosure; pre-existing components identified.
 
-### Session 1 — Astra live (2–3 hrs)
-1. Fix core pricing constants (35¢ floor)
-2. `npm run smoke:astra` → UserIntent created, id printed, visible in dashboard-sandbox.astra.finance → Users
-3. OAuth: build the authorize-URL flow (`app.astra.finance/login/oauth/authorize` w/ user_intent_id + redirect to localhost callback), founder authenticates with real phone SMS, exchange code via existing `exchangeAuthorizationCode` → store access/refresh token
-4. Link account: try Plaid processor-token path; fallback = create account via secure endpoint with routing `222222226` + fake account number
-5. `POST /v1/routines` — one-time debit, $19.99, `client_correlation_id` = a Fumav payment-intent id
-**AC: a real debit routine exists in Astra's sandbox, tied to a Fumav intent id, visible in their dashboard.**
+Removed from the hackathon repo: Astra live mode wiring (clients stay in the tree, identified as pre-existing and not exercised). Bridge rail stays as the production settlement adapter, not used in the demo.
 
-### Session 2 — Bridge schema-true (2–3 hrs)
-1. Bridge client in `packages/bridge`: Api-Key header + **Idempotency-Key (uuid) on every POST**
-2. Create business customer → `POST /customers/{id}/simulate_kyc_approval` (sandbox-only endpoint)
-3. External account (merchant bank, fake details OK) → create Bridge wallet (treasury) → `simulate_deposit` to fund it
-4. `POST /transfers`: source bridge_wallet → destination ach/usd external_account, **`on_behalf_of` = merchant customer id**
-**AC: customer, wallet, funded balance, and transfer objects all visible in Bridge's sandbox dashboard.** (Money is dummy — expected; say so in any demo.)
+## Acceptance criteria
 
-### Session 3 — Wire-up (3–4 hrs)
-1. `apps/api` (express): Astra webhook receiver + HMAC verify — **gotcha: Astra signs JSON serialized python-style with `", "` / `": "` separators; verify against re-serialized payload, not raw** — ngrok for local delivery
-2. Orchestrator drives the real legs: intent created → Astra routine (S1 code) → engine transition on webhook/poll → Bridge transfer (S2 code) → ledger entries from REAL events
-3. Merchant view (reuse demo's dashboard aesthetic) reading the engine's ledger populated by live sandbox data
-**AC: one command starts api + view; a script-initiated payment flows through both sandboxes and appears in the merchant view with real object ids.**
+- `npm test` green (existing 31 + new: fee seam, Monad rail in mock, dispute endpoint, view copy).
+- `MOCK=true npm run dev` runs every flow with no keys.
+- `MONAD=true npm run dev` + a tap on `/checkout`: payment reaches `settled` from a real Monad tx; `/` shows "Paid out" with the settlement record link; `/ops` shows the tx hash and reserve.
+- "Simulate dispute" on `/ops`: second Monad tx, reserve decreases, merchant balance unchanged, payment `charged_back`, ledger shows `CHARGEBACK_ABSORBED`.
+- Bank leg (mock) clears ~20s later: `replenished`, `ACH_REPLENISH` booked.
+- README has contract addresses + tx hashes from the live run.
 
-## Sandbox gotchas (verified from docs; will bite if ignored)
+## Demo video beats (3 min max)
 
-- Astra: max **3 UserIntents per email** (rotate plus-tags) · `address2` must be `""` never null · DOB `YYYY-01-01` and IPs `127.0.0.x` force rejection · `192.0.2.0` = sanctioned test IP · one phone = one User profile (delete via dashboard)
-- Bridge: **no payment webhooks fire in sandbox** (poll transfer states; test the webhook handler with `POST /webhooks/{id}/send`) · **Plaid does not work in Bridge sandbox** · wallets ARE properly testable via `simulate_deposit`
-- Astra OAuth requires SMS to `SMOKE_PHONE` — founder must be present for step S1.3 (paired session)
+1. Problem (20s): webstore checkout runs on card rails: 3-6% cost, 2-3 day settlement, chargebacks land on the studio.
+2. Player (40s): `/checkout`, "[Game] Pay", link bank, one tap, stopwatch stops at settlement. Player saw dollars.
+3. Merchant (30s): `/`, "Paid out" in dollars, net of fee, settlement record. No crypto vocabulary.
+4. Operator (50s): `/ops`, the Monad tx, the reserve, "Simulate dispute", second tx, merchant untouched. Why Monad: sub-second finality at cents of gas makes per-transaction settlement with a fee split and a dispute reserve viable at $20 ticket sizes.
+5. Where it goes (30s): web3 games onboarding non-crypto players, iGaming money-in/money-out, Bridge/Coinbase licensing for the fiat legs.
 
-## Session 4 — Demo-ready v1 (scoped Sep 21, post-market-feedback)
+## Rules that survive
 
-1. **The signup-flow demo, timed** — Archie's explicit ask: watch a new player sign up, see how long it takes, see the friction. Build the onboarding path (bank-link flow, sandbox) with a visible elapsed-time counter; the demo answer to "what does signup look like?" becomes a live stopwatch, not a claim.
-2. UX pass on the merchant view + checkout surfaces (demo-grade polish, not production)
-3. Curated demo script: one command resets to a clean state, so every demo starts identical
-**AC: a stranger can watch signup → payment → settlement live, with real timings, and the founder never says "imagine that this…"**
-
-## Reference
-
-`../03 Research & Briefs/Integration_Brief_AstraBridge.md` has the full endpoint/auth writeup. API docs: docs.astra.finance · apidocs.bridge.xyz (both have llms.txt indexes).
+Secrets never in the repo. `MOCK=true` must keep every flow runnable. Amounts in integer cents; on-chain units are 6-decimal. `TRANSITIONS` is edited deliberately, not incidentally. No em-dashes in copy.
