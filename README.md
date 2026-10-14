@@ -57,6 +57,7 @@ The operator key does not have to live in `.env`. With `TREASURY_SIGNER=privy`, 
 - `packages/monad/src/clients.ts`: `walletClientFor(env)` picks the Privy wallet when `TREASURY_SIGNER=privy` and `PRIVY_TREASURY_WALLET_ID` + `PRIVY_TREASURY_ADDRESS` are set.
 - `npm run privy:treasury`: one-shot migration. Creates the policy and the wallet, funds it with 1 MON and 5,000 tUSD from the raw key, has Privy sign `approve(settlement, max)` as the first real signature, then `setOperator(privyAddress)`. Writes the new treasury, the Privy wallet id and policy id into `deployments/monad-testnet.json` and prints the `.env` lines to add. `-- --rollback` hands the operator role back to the raw key (signed by Privy; the policy allows exactly that target).
 - `/ops` shows "Treasury signer: Privy wallet <id> · policy <id>" when active, "raw key (.env)" otherwise.
+- Live: the deployed treasury is now the Privy wallet `0xF11C…bb47` under policy `mrnafbi7u4l6trqe3y5xsrbo` (see "Live run" for the signed transactions).
 
 ## Architecture
 
@@ -101,6 +102,7 @@ npm run monad:check      # chain id, balances, reserve
 npm run dev:monad        # http://localhost:3100/checkout -> tap pay -> /ops shows the Monad tx
 npm run reset            # forget demo payments and payout accounts (stop the API first)
 npm run privy:treasury   # optional: move the operator role to a policy-scoped Privy server wallet (-- --rollback to undo)
+npm run privy:policy-check  # asks the Privy treasury wallet to sign an off-scope transfer; the policy must refuse
 ```
 
 Demo script: open `/merchant/setup` and create the studio's payout account with an email (Privy). Open `/checkout`, link a bank (sandbox picker), tap **Pay $19.99**. The stopwatch runs from tap to the settlement receipt. Open `/` for the studio's view and `/ops` for the Monad side; press **Simulate Reg E dispute** to watch the reserve absorb it in a second transaction while the merchant's balance stays put. About 20 seconds later the (simulated) bank debit clears and the treasury is replenished.
@@ -114,6 +116,15 @@ Recorded on October 13, 2026 from `/checkout` and `/ops` against the contracts a
 | `pay_mv7dh79b0` | replenished | [`0xc4951be8…f982b6`](https://testnet.monadexplorer.com/tx/0xc4951be8ef339edf6eef85a20f546c81db21b855789c9a0c1e7658d4e8f982b6) | 70823801 | - |
 | `pay_mv7dhayt4` | charged back | [`0x5a22da8d…9472c2`](https://testnet.monadexplorer.com/tx/0x5a22da8dcb0067c205bb78be3e7d3b90c98908761f8d1d9ae5659962419472c2) | 70823815 | [`0x877ef62b…f0e7d0`](https://testnet.monadexplorer.com/tx/0x877ef62bf987afe87e9f5acf6215f813b8278ff6b4c0c8a3ea8d20bf03f0e7d0) |
 | `pay_mv7dhefw8` | replenished | [`0x6c52d1a6…f43ae1`](https://testnet.monadexplorer.com/tx/0x6c52d1a6ce92676fdd1947dd1a67eda8e90aedc72ca93abadb26f6f60af43ae1) | 70823830 | - |
+
+With Privy (recorded after the two Privy parts landed, same evening):
+
+| Payment | Outcome | `settle()` tx | Signed by | `absorbDispute()` tx |
+|---|---|---|---|---|
+| `pay_mv7fxfr20` | replenished, paid to the Privy merchant payout wallet `0x0CA4…5BEe` | [`0x72f32e32…4bdd49`](https://testnet.monadexplorer.com/tx/0x72f32e324b54eb252412771e73560351e98d7bc424c4c2539cd2d4800f4bdd49) | raw treasury key | - |
+| `pay_mv7fyuur0` | charged back | [`0x55487bad…b43250`](https://testnet.monadexplorer.com/tx/0x55487bad019245b5ec19e61eff6a81854c58e3dac969cf12aa564d9720b43250) | Privy treasury wallet `bkl5pmmzvk0ieycjx282kwps` | [`0xc25b47d1…a1684`](https://testnet.monadexplorer.com/tx/0xc25b47d161e6dd2567d4ad12cd043d89eb2f909ca111541ea46b7078471a1684) (Privy) |
+
+Treasury migration (`npm run privy:treasury`): policy `mrnafbi7u4l6trqe3y5xsrbo`, wallet `0xF11C160c886A61E54A5d84B1D38D3457a6A5bb47`; the first Privy-signed transaction was [`approve`](https://testnet.monadexplorer.com/tx/0x752c3b8f0bcd83e6810af268cce69cd809d96fcfc90567332e3c1194621fdeed), then [`setOperator`](https://testnet.monadexplorer.com/tx/0xa65631ac8b6559984327b945d71905e867afb477142bb9f3559a4cdb25844fe3) from the previous key. All hashes are in `deployments/monad-testnet.json`.
 
 Each settlement reached `payment_processed` from the Monad receipt within 1 to 3 seconds of the tap; the engine then booked `MERCHANT_PAYOUT` and `FEE_ACCRUED`. The disputed payment shows `CHARGEBACK_ABSORBED` in the ledger while the merchant's on-chain balance is unchanged; the reserve dropped by $19.99.
 

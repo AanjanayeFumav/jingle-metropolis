@@ -3,7 +3,7 @@
   "rpcUrl": "https://testnet-rpc.monad.xyz",
   "explorerUrl": "https://testnet.monadexplorer.com",
   "deployedAt": "2026-10-14T00:26:58.890Z",
-  "treasury": "0x9c83aA4A8aE8bcBCD0925B298513EB8D386D86FA",
+  "treasury": "0xF11C160c886A61E54A5d84B1D38D3457a6A5bb47",
   "merchant": "0xc71dAFF64eCc6FAc9DE76C681092634592456459",
   "testUsd": "0xf03dcc288d3d9e87b836dc57bc3688a18de86b3e",
   "settlement": "0xa655ef5323a95cceaf81907dd945720cab2de999",
@@ -12,6 +12,14 @@
     "deploySettlement": "0x8ec61abfd88b47d63ac676964649ee7dab7847c0bac7b95e13fd208cadb00b5c",
     "mint": "0x2d787dc35ed6a00697f6ba9f90dee483a26712dad05155a9dcd106fedb17637e",
     "approve": "0x11fa64d23eae6a47915ef327dcc6d3f911d1ebbba6c27270bf209c67df54a1b3",
-    "fundReserve": "0xc6b3eb18ef0fdd37b5144c0f2efd7c6d54b478dbc40c8e5a97d022cf4a11dd9a"
-  }
+    "fundReserve": "0xc6b3eb18ef0fdd37b5144c0f2efd7c6d54b478dbc40c8e5a97d022cf4a11dd9a",
+    "privyGas": "0x089d7e7c239728e1a38560f6745c54423aa3a7a3d467dfeb3dcfb5dba64e957a",
+    "privyFloat": "0x1cd9199a8b6514d11be707c0bbb3a721604c6541b3aa96c791057a3f9bb14c4c",
+    "privyApprove": "0x752c3b8f0bcd83e6810af268cce69cd809d96fcfc90567332e3c1194621fdeed",
+    "setOperatorPrivy": "0xa65631ac8b6559984327b945d71905e867afb477142bb9f3559a4cdb25844fe3"
+  },
+  "treasurySigner": "privy",
+  "privyTreasuryWalletId": "bkl5pmmzvk0ieycjx282kwps",
+  "privyPolicyId": "mrnafbi7u4l6trqe3y5xsrbo",
+  "previousTreasury": "0x9c83aA4A8aE8bcBCD0925B298513EB8D386D86FA"
 }

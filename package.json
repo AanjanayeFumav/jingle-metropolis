@@ -18,6 +18,7 @@
     "deploy:monad": "tsx scripts/deploy-monad.ts",
     "monad:check": "tsx scripts/monad-check.ts",
     "privy:treasury": "tsx scripts/privy-treasury.ts",
+    "privy:policy-check": "tsx scripts/privy-policy-check.ts",
     "pay": "tsx scripts/pay.ts",
     "reset": "tsx scripts/reset.ts",
     "simulate": "tsx scripts/simulate.ts",
