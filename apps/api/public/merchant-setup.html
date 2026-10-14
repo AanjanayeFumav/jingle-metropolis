@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jingle - Set up payouts</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f7f8f7; color:#1a1c1a; }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 22px 18px 48px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .mark { width:30px; height:30px; border-radius:8px; background:#00A844; color:#fff; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; }
+  .brand b { font-size:17px; }
+  .brand .sub { color:#7a807a; font-size:12.5px; margin-left:4px; }
+  nav { display:flex; gap:14px; margin:10px 0 0; font-size:12px; } nav a { color:#7a807a; font-weight:600; text-decoration:none; }
+  .card { background:#fff; border:1px solid #e5e8e5; border-radius:14px; padding:22px; margin-top:18px; }
+  h2 { font-size:20px; } .note { color:#4a4f4a; font-size:13px; margin-top:6px; line-height:1.45; }
+  label { display:block; font-size:12px; font-weight:700; color:#4a4f4a; margin-top:18px; }
+  input { width:100%; font-size:15px; padding:11px 12px; border:1.5px solid #d9ddd9; border-radius:10px; margin-top:6px; }
+  input:focus { outline:none; border-color:#00A844; }
+  button { width:100%; margin-top:14px; font-size:15px; font-weight:800; padding:12px; border:0; border-radius:10px; background:#00A844; color:#fff; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:default; }
+  .ok { font-size:13px; } .ok .big { font-size:22px; font-weight:800; color:#0a8f47; margin-bottom:8px; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid #f0f2f0; font-size:13px; } .row span { color:#7a807a; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  .err { color:#8a1c1c; font-size:12.5px; margin-top:10px; }
+  a { color:#0a8f47; font-weight:700; text-decoration:none; } a:hover { text-decoration:underline; }
+  .foot { text-align:center; font-size:10.5px; color:#a0a6a0; margin-top:18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="mark">J</div><b>Jingle</b><span class="sub">Starfall Studios</span></div>
+  <nav><a href="/checkout">Player checkout</a><a href="/">Merchant view</a><a href="/ops">Operator console</a></nav>
+
+  <div class="card" id="form-card">
+    <h2>Set up payouts</h2>
+    <div class="note">Enter the email of the person who owns payouts at your studio. Jingle opens a payout account for you on the spot. No passwords to keep, nothing to install.</div>
+    <form id="form">
+      <label for="email">Finance contact email</label>
+      <input id="email" type="email" required placeholder="finance@starfall.studio" autocomplete="email" />
+      <button id="go" type="submit">Create payout account</button>
+      <div id="err" class="err"></div>
+    </form>
+  </div>
+
+  <div class="card ok" id="done" hidden>
+    <div class="big">Payout account ready</div>
+    <div class="row"><span>Account</span><b class="mono" id="acct">-</b></div>
+    <div class="row"><span>Set up with</span><b id="who">-</b></div>
+    <div class="row"><span>Payouts</span><b>Every payment, same day, net of the Jingle fee</b></div>
+    <div class="note" style="margin-top:14px"><a href="/">Go to your merchant view &rarr;</a></div>
+  </div>
+
+  <div class="foot">Sandbox, simulated funds. No real money moves.</div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const MERCHANT = "merch_starfall";
+  const mask = (a) => "••••" + a.slice(-4);
+  function ready(a) { $("acct").textContent = mask(a.address); $("who").textContent = a.email; $("form-card").hidden = true; $("done").hidden = false; }
+  fetch("/api/merchants/" + MERCHANT).then(r => r.ok ? r.json() : null).then(a => { if (a) ready(a); }).catch(() => {});
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault(); $("err").textContent = ""; $("go").disabled = true; $("go").textContent = "Creating…";
+    try {
+      const r = await fetch("/api/merchants/" + MERCHANT + "/payout-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("email").value }) });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || ("HTTP " + r.status));
+      ready(body);
+    } catch (err) { $("err").textContent = "Could not create the account: " + err.message; }
+    finally { $("go").disabled = false; $("go").textContent = "Create payout account"; }
+  });
+</script>
+</body>
+</html>

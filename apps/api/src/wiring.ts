@@ -5,6 +5,7 @@
  *                and deployments/monad-testnet.json from `npm run deploy:monad`). This is the hackathon demo mode.
  *  MOCK=false  → real AstraConsumerRail + BridgeSettlementRail from .env and .fumav-state.json (pre-existing, not exercised here).
  */
+import { resolve } from "node:path";
 import type { Address } from "viem";
 import { AstraClient } from "../../../packages/astra/src/client.js";
 import { AstraConsumerRail } from "../../../packages/astra/src/rail.js";
@@ -14,6 +15,8 @@ import { explorerAddressUrl, explorerTxUrl } from "../../../packages/monad/src/c
 import { loadArtifact, loadDeployment, publicClientFor, walletClientFor, type Deployment } from "../../../packages/monad/src/clients.js";
 import { MonadReceiptReader } from "../../../packages/monad/src/readers.js";
 import { MonadSettlementRail } from "../../../packages/monad/src/rail.js";
+import { PayoutAccounts } from "../../../packages/privy/src/accounts.js";
+import { privyClientFor } from "../../../packages/privy/src/client.js";
 import { PRICING, PaymentEngine } from "../../../packages/orchestrator/src/engine.js";
 import { AlwaysT1Risk, MockConsumerRail, MockSettlementRail } from "../../../packages/orchestrator/src/mock-rails.js";
 import { readState } from "../../../scripts/_state.js";
@@ -36,6 +39,10 @@ export interface Runtime {
   defaultPlayerId: string;
   merchantId: string;
   merchantName: string;
+  /** Merchant payout accounts (Privy-managed wallets), keyed by merchant id. */
+  payouts: PayoutAccounts;
+  /** Where a merchant's payout goes: its Privy payout account first, else the deployed demo merchant address. */
+  resolveMerchant(merchantId: string): Address;
   /** MONAD mode only: addresses + explorer links for the operator console. */
   chain?: {
     deployment: Deployment;
@@ -52,9 +59,25 @@ function need(env: NodeJS.ProcessEnv, name: string): string {
   return v;
 }
 
+function payoutsFor(env: NodeJS.ProcessEnv, mock: boolean): PayoutAccounts {
+  // MOCK keeps payout accounts in memory (keyless, nothing written); MONAD/live persist them next to the snapshot.
+  const path = env.JINGLE_MERCHANTS_PATH || (mock ? undefined : resolve(process.cwd(), ".jingle-merchants.json"));
+  return new PayoutAccounts(privyClientFor(env, { mock }), path);
+}
+
+function merchantResolver(payouts: PayoutAccounts, fallback?: Address): (merchantId: string) => Address {
+  return (merchantId) => {
+    const account = payouts.get(merchantId);
+    if (account) return account.address;
+    if (fallback && merchantId === DEMO_MERCHANT_ID) return fallback;
+    throw new Error(`unknown merchant ${merchantId}; no payout account set up`);
+  };
+}
+
 export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: MockReaderOptions): Runtime {
   const monad = env.MONAD === "true";
   const mock = !monad && env.MOCK !== "false";
+  const payouts = payoutsFor(env, mock);
 
   if (mock) {
     const engine = new PaymentEngine(new MockConsumerRail(), new MockSettlementRail(), new AlwaysT1Risk(), PRICING);
@@ -66,6 +89,8 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
       defaultPlayerId: "player_demo",
       merchantId: DEMO_MERCHANT_ID,
       merchantName: DEMO_MERCHANT_NAME,
+      payouts,
+      resolveMerchant: merchantResolver(payouts),
     };
   }
 
@@ -73,6 +98,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
     const deployment = loadDeployment();
     const publicClient = publicClientFor(env);
     const walletClient = walletClientFor(env);
+    const resolveMerchant = merchantResolver(payouts, deployment.merchant);
     const settlementAbi = loadArtifact("JingleSettlement").abi;
     const usdAbi = loadArtifact("TestUSD").abi;
     if (walletClient.account.address.toLowerCase() !== deployment.treasury.toLowerCase()) {
@@ -84,8 +110,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
       settlementAddress: deployment.settlement,
       settlementAbi,
       async resolveMerchant(merchantId) {
-        if (merchantId !== DEMO_MERCHANT_ID) throw new Error(`unknown merchant ${merchantId}; only ${DEMO_MERCHANT_ID} is onboarded`);
-        return deployment.merchant;
+        return resolveMerchant(merchantId);
       },
     });
     const engine = new PaymentEngine(new MockConsumerRail(), settlement, new AlwaysT1Risk(), PRICING);
@@ -100,6 +125,8 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
       defaultPlayerId: "player_demo",
       merchantId: DEMO_MERCHANT_ID,
       merchantName: DEMO_MERCHANT_NAME,
+      payouts,
+      resolveMerchant,
       chain: {
         deployment,
         txUrl: (hash) => explorerTxUrl(env, hash),
@@ -108,7 +135,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
           const [mon, tre, mer, reserve, settled, disputed] = await Promise.all([
             publicClient.getBalance({ address: deployment.treasury }),
             balOf(deployment.treasury),
-            balOf(deployment.merchant),
+            balOf(resolveMerchant(DEMO_MERCHANT_ID)),
             readNum("reserve"),
             readNum("totalSettled"),
             readNum("totalDisputed"),
@@ -176,5 +203,7 @@ export function buildRuntime(env: NodeJS.ProcessEnv = process.env, mockOpts?: Mo
     defaultPlayerId: s.player!.user_id!,
     merchantId: DEMO_MERCHANT_ID,
     merchantName: DEMO_MERCHANT_NAME,
+    payouts,
+    resolveMerchant: merchantResolver(payouts),
   };
 }

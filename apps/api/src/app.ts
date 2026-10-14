@@ -236,6 +236,38 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
     res.json(view(intent.id));
   });
 
+  // ---- merchant payout accounts (Privy-managed wallets, created server-side from an email) ----
+  const accountView = (merchantId: string) => {
+    const a = rt.payouts.get(merchantId);
+    return a && { merchantId, email: a.email, address: a.address, privyWalletId: a.privyWalletId, provider: "privy", createdAt: a.createdAt };
+  };
+
+  app.post("/api/merchants/:id/payout-account", async (req: Request, res: Response) => {
+    const merchantId = String(req.params.id);
+    const email = String((req.body as { email?: unknown } | undefined)?.email ?? "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "a valid email is required" });
+      return;
+    }
+    try {
+      const { created } = await rt.payouts.ensure(merchantId, email, merchantId === rt.merchantId ? `${rt.merchantName} payouts` : undefined);
+      console.log(`[payouts] ${merchantId} ${created ? "created" : "already had"} a payout account (${rt.payouts.privy.provider})`);
+      res.status(created ? 201 : 200).json(accountView(merchantId));
+    } catch (err) {
+      console.error(`[payouts] ${merchantId} failed:`, err instanceof Error ? err.message : err);
+      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get("/api/merchants/:id", (req, res) => {
+    const v = accountView(String(req.params.id));
+    if (!v) {
+      res.status(404).json({ error: "no payout account" });
+      return;
+    }
+    res.json(v);
+  });
+
   app.get("/api/ledger", (_req, res) => {
     res.json({ entries: [...engine.ledger].reverse() });
   });
@@ -255,7 +287,11 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
 
   /** Operator console data: contracts, addresses, live balances. Chain vocabulary is allowed here. */
   app.get("/api/ops", async (_req, res) => {
-    const base = { mode: rt.mode, merchantId: rt.merchantId, merchantName: rt.merchantName, operator: engine.summary() };
+    const account = rt.payouts.get(rt.merchantId);
+    const payoutAccount = account
+      ? { provider: rt.payouts.privy.provider, privyWalletId: account.privyWalletId, address: account.address, email: account.email, createdAt: account.createdAt, link: rt.chain?.addressUrl(account.address) ?? null }
+      : null;
+    const base = { mode: rt.mode, merchantId: rt.merchantId, merchantName: rt.merchantName, operator: engine.summary(), payoutAccount };
     if (!rt.chain) {
       res.json({ ...base, chain: null });
       return;
@@ -271,9 +307,9 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
           settlement: d.settlement,
           testUsd: d.testUsd,
           treasury: d.treasury,
-          merchant: d.merchant,
+          merchant: rt.resolveMerchant(rt.merchantId),
           deployTxs: d.txs,
-          links: { settlement: rt.chain.addressUrl(d.settlement), treasury: rt.chain.addressUrl(d.treasury), merchant: rt.chain.addressUrl(d.merchant) },
+          links: { settlement: rt.chain.addressUrl(d.settlement), treasury: rt.chain.addressUrl(d.treasury), merchant: rt.chain.addressUrl(rt.resolveMerchant(rt.merchantId)) },
           balances,
         },
       });
@@ -292,6 +328,10 @@ export function createApp(rt: Runtime, opts: AppOptions): { app: express.Express
       pollers: ctx.pollerTicks,
       payments: engine.intents.size,
     });
+  });
+
+  app.get("/merchant/setup", (_req, res) => {
+    res.sendFile(fileURLToPath(new URL("../public/merchant-setup.html", import.meta.url)));
   });
 
   app.use(express.static(fileURLToPath(new URL("../public", import.meta.url)), { extensions: ["html"] }));

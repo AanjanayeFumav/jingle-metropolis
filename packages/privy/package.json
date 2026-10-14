@@ -1,0 +1,8 @@
+{
+  "name": "@jingle/privy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "description": "Privy server wallets: merchant payout accounts (REST client + keyless mock)."
+}

@@ -76,6 +76,7 @@
   </div>
   <nav><a href="/checkout">Player checkout</a><a class="on" href="/">Merchant view</a><a href="/ops">Operator console</a></nav>
   <div class="merchant">Merchant: <b id="merchant">-</b> &middot; Payouts arrive by bank transfer, same day, net of the Jingle fee. Player bank debits clear on their own schedule and never affect a payout already made. A dispute is covered by Jingle; your payout stays.</div>
+  <div class="merchant" id="payout"><a href="/merchant/setup">Set up payouts</a></div>
 
   <div class="statgrid">
     <div class="stat"><div class="l">Paid out</div><div id="s-paid" class="v green">$0.00</div><div class="d" id="s-paid-d">0 payments</div></div>
@@ -165,6 +166,15 @@
       $("badge").textContent = "OFFLINE"; $("badge").className = "badge stale";
     }
   }
+  async function payout() {
+    try {
+      const r = await fetch("/api/merchants/merch_starfall");
+      if (!r.ok) return;
+      const a = await r.json(); const el = $("payout"); el.textContent = "Payout account: ••••" + a.address.slice(-4) + " · set up with ";
+      const b = document.createElement("b"); b.textContent = a.email; el.appendChild(b);
+    } catch (e) {}
+  }
+  payout();
   tick(); setInterval(tick, 3000);
 </script>
 </body>

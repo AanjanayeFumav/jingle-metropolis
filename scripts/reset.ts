@@ -1,12 +1,12 @@
 /**
- * One-command demo reset: forget every payment and ledger entry (the snapshot files). Contracts and balances on
+ * One-command demo reset: forget every payment, ledger entry and merchant payout account (the snapshot files). Contracts and balances on
  * Monad are untouched; the next payment starts from a clean console. Stop the API first (it rewrites the snapshot on exit).
  * Run: npm run reset
  */
 import { existsSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 
-for (const f of [".jingle-payments.json", ".fumav-payments.json"]) {
+for (const f of [".jingle-payments.json", ".fumav-payments.json", ".jingle-merchants.json"]) {
   const p = resolve(process.cwd(), f);
   if (existsSync(p)) {
     unlinkSync(p);

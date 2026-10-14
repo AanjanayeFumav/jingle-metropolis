@@ -7,7 +7,7 @@ import { STATUS_LABEL } from "../apps/api/src/view.js";
 const BANNED = /\b(usdc|usdb|usdt|stablecoins?|wallets?|on-chain|onchain|blockchain|crypto|solana|monad|tokens?|chain)\b/i;
 
 test("merchant and player views contain no crypto vocabulary and carry the sandbox disclaimer", () => {
-  for (const file of ["apps/api/public/index.html", "apps/api/public/checkout.html"]) {
+  for (const file of ["apps/api/public/index.html", "apps/api/public/checkout.html", "apps/api/public/merchant-setup.html"]) {
     const html = readFileSync(file, "utf8");
     const hit = html.match(BANNED);
     assert.equal(hit, null, `banned word in ${file}: ${hit?.[0]}`);

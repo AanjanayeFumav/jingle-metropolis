@@ -103,11 +103,13 @@
     if (c.error) { $("badge").textContent = "RPC ERROR"; $("badge").className = "badge bad"; $("chainnote").innerHTML = '<span class="err">' + c.error + '</span>'; return; }
     $("badge").textContent = "MONAD " + c.chainId; $("badge").className = "badge";
     $("chainnote").textContent = "chain " + c.chainId + " · explorer " + c.explorerUrl;
+    const b0 = c.balances || {};
     $("kv").innerHTML = [
       ["JingleSettlement", '<a target="_blank" href="' + c.links.settlement + '">' + c.settlement + '</a>'],
       ["TestUSD (6 dec)", c.testUsd],
       ["Treasury / operator", '<a target="_blank" href="' + c.links.treasury + '">' + c.treasury + '</a>'],
       ["Merchant wallet", '<a target="_blank" href="' + c.links.merchant + '">' + c.merchant + '</a>'],
+      ["Merchant payout wallet", o.payoutAccount ? (o.payoutAccount.provider === "privy" ? "Privy-managed" : "Privy (mock)") + " · id " + o.payoutAccount.privyWalletId + " · " + String(o.payoutAccount.email).replace(/[<>&"]/g, "") + " · balance " + usd(b0.merchantUsd) + (o.payoutAccount.link ? ' · <a target="_blank" href="' + o.payoutAccount.link + '">' + short(o.payoutAccount.address) + '</a>' : "") : 'not set up · deployment default above · <a href="/merchant/setup">set up payouts</a>'],
       ["Deploy txs", Object.entries(c.deployTxs || {}).map(([k, h]) => k + ' <a target="_blank" href="' + c.explorerUrl + '/tx/' + h + '">' + short(h) + '</a>').join(" · ")],
     ].map(([k, v]) => '<div class="k">' + k + '</div><div>' + v + '</div>').join("");
     const b = c.balances;

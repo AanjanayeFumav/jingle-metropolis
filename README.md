@@ -40,6 +40,15 @@ See `deployments/monad-testnet.json` for the live addresses and deploy transacti
 | Demo merchant wallet | [`0xc71dAFF64eCc6FAc9DE76C681092634592456459`](https://testnet.monadexplorer.com/address/0xc71dAFF64eCc6FAc9DE76C681092634592456459) |
 | Deploy transactions | [deployTestUsd](https://testnet.monadexplorer.com/tx/0x8340d6013167de40d5799580e300df8d83b405d5a2b8e87d3d89ae3d691f487d), [deploySettlement](https://testnet.monadexplorer.com/tx/0x8ec61abfd88b47d63ac676964649ee7dab7847c0bac7b95e13fd208cadb00b5c), [mint](https://testnet.monadexplorer.com/tx/0x2d787dc35ed6a00697f6ba9f90dee483a26712dad05155a9dcd106fedb17637e), [approve](https://testnet.monadexplorer.com/tx/0x11fa64d23eae6a47915ef327dcc6d3f911d1ebbba6c27270bf209c67df54a1b3), [fundReserve](https://testnet.monadexplorer.com/tx/0xc6b3eb18ef0fdd37b5144c0f2efd7c6d54b478dbc40c8e5a97d022cf4a11dd9a) |
 
+## Privy: merchant payout accounts
+
+**Bounty: Privy.** A studio's finance lead sets up payouts with nothing but an email at `/merchant/setup`. Jingle creates a Privy server wallet for the merchant on the spot (`POST https://api.privy.io/v1/wallets`, `chain_type: "ethereum"`, app-secret auth, `privy-idempotency-key` per merchant so a retry never opens a second account), stores it in `.jingle-merchants.json`, and the next `settle()` on Monad pays that address. No seed phrase, no browser extension, no client SDK on our pages: the studio sees "Payout account ready" and a masked account number; the operator console shows "Merchant payout wallet: Privy-managed", the Privy wallet id, and its live balance with an explorer link.
+
+- `packages/privy/src/client.ts`: a small REST client for the Privy Wallets API, plus a deterministic keyless mock used in `MOCK=true` and in tests.
+- `packages/privy/src/accounts.ts`: payout accounts per merchant, idempotent (a second setup returns the existing account).
+- `POST /api/merchants/:id/payout-account { email }` (201, or 200 when it already exists) and `GET /api/merchants/:id`.
+- `resolveMerchant(merchantId)` in `apps/api/src/wiring.ts` reads the payout account first and falls back to the deployed demo merchant address, so settlement routes to the Privy wallet as soon as it exists.
+
 ## Architecture
 
 ```
@@ -51,6 +60,7 @@ player (bank)  --ACH debit (T+1)-->  Jingle treasury  --settle() on Monad, now--
 
 - `packages/core`: the `PaymentIntent` state machine (`TRANSITIONS` is the product) and ledger entry types. All amounts are integer cents.
 - `packages/orchestrator`: `PaymentEngine` (create, start, settlement confirmed, ACH cleared, ACH returned, chargeback) and the pricing rule (3% or $0.35). Rails are injected through two interfaces: `ConsumerRail` (bank debit) and `SettlementRail` (merchant payout).
+- `packages/privy`: Privy server-wallet client and merchant payout accounts (see above).
 - `packages/monad`: `MonadSettlementRail` (the `SettlementRail` on Monad via viem), receipt reader, chain config, artifact loader.
 - `contracts/`: `JingleSettlement.sol`, `TestUSD.sol`, compiled with solc-js; ABI + bytecode committed under `contracts/artifacts/`.
 - `apps/api`: Express API. `POST /api/payments` starts a payment; pollers read receipts; `reconcile.ts` turns rail facts into legal state transitions, idempotently and out-of-order safe; `POST /api/payments/:id/dispute` is the demo trigger for a Reg E dispute; `GET /api/ops` serves the console. Snapshot persistence survives restarts.
@@ -67,7 +77,7 @@ TypeScript, Node 20+, Express 5, viem 2, Solidity 0.8.28 via solc-js, node:test.
 ```bash
 git clone https://github.com/AanjanayeFumav/jingle-metropolis.git && cd jingle-metropolis
 npm install
-npm test                 # 36 tests: state machine, ledger fates, pricing, reconciler, mock e2e, dispute, rail units, view copy
+npm test                 # 41 tests: state machine, ledger fates, pricing, reconciler, mock e2e, dispute, rail units, Privy payout accounts, view copy
 npm run dev              # MOCK mode, no keys: http://localhost:3100/checkout
 ```
 
@@ -75,14 +85,15 @@ Live settlement on Monad testnet:
 
 ```bash
 cp .env.example .env     # set MONAD_PRIVATE_KEY (a fresh key; fund it with testnet MON at https://faucet.monad.xyz)
+                         # optional: PRIVY_APP_ID + PRIVY_APP_SECRET (dashboard.privy.io); without them a mock Privy provider is used
 npm run compile:contracts
 npm run deploy:monad     # deploys TestUSD + JingleSettlement, mints 10,000 tUSD, approves, funds a $500 reserve -> deployments/monad-testnet.json
 npm run monad:check      # chain id, balances, reserve
 npm run dev:monad        # http://localhost:3100/checkout -> tap pay -> /ops shows the Monad tx
-npm run reset            # forget demo payments (stop the API first)
+npm run reset            # forget demo payments and payout accounts (stop the API first)
 ```
 
-Demo script: open `/checkout`, link a bank (sandbox picker), tap **Pay $19.99**. The stopwatch runs from tap to the settlement receipt. Open `/` for the studio's view and `/ops` for the Monad side; press **Simulate Reg E dispute** to watch the reserve absorb it in a second transaction while the merchant's balance stays put. About 20 seconds later the (simulated) bank debit clears and the treasury is replenished.
+Demo script: open `/merchant/setup` and create the studio's payout account with an email (Privy). Open `/checkout`, link a bank (sandbox picker), tap **Pay $19.99**. The stopwatch runs from tap to the settlement receipt. Open `/` for the studio's view and `/ops` for the Monad side; press **Simulate Reg E dispute** to watch the reserve absorb it in a second transaction while the merchant's balance stays put. About 20 seconds later the (simulated) bank debit clears and the treasury is replenished.
 
 ## Live run
 
@@ -100,7 +111,7 @@ Each settlement reached `payment_processed` from the Monad receipt within 1 to 3
 
 This repository continues `fumav-mvp`, which was started on **September 12, 2026**, inside the hackathon window (September 1 to October 13). The commit history is intact. Built September 12-17: `packages/core`, `packages/orchestrator`, `packages/astra`, `packages/bridge`, `apps/api` (API, reconciler, pollers, snapshot, merchant view) and 31 tests, all against Astra and Bridge sandboxes.
 
-Built October 13 for Metropolis: everything under `contracts/` and `packages/monad/`, the `MONAD` runtime mode, the dispute trigger and operator API, the fee split in the settlement seam, the player checkout, the operator console, the merchant view's settlement records, the deploy/check/reset scripts, and 5 new tests.
+Built October 13 for Metropolis: everything under `contracts/` and `packages/monad/`, the `MONAD` runtime mode, the dispute trigger and operator API, the fee split in the settlement seam, the player checkout, the operator console, the merchant view's settlement records, the deploy/check/reset scripts, the Privy merchant payout accounts (`packages/privy`, `/merchant/setup`), and 10 new tests.
 
 External libraries: `viem` (MIT), `express` (MIT), `dotenv` (BSD-2), `solc` (MIT), `tsx` (MIT), `typescript` (Apache-2.0). The contracts use no external Solidity dependencies.
 

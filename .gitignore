@@ -8,3 +8,4 @@ dist/
 .fumav-payments.json
 .jingle-payments.json
 .jingle-state.json
+.jingle-merchants.json
